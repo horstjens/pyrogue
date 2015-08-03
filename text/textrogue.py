@@ -1,77 +1,77 @@
-# -*- coding: utf-8 -*-                # nur wichtig für python version2
-from __future__ import print_function  # nur wichtig für python version2
-from __future__ import division        # nur wichtig für python version2 
-try:                                   # nur wichtig für python version2
-    input = raw_input                  # nur wichtig für python version2
-except NameError:                      # nur wichtig für python version2
-    pass                               # nur wichtig für python version2
+# -*- coding: utf-8 -*-                # only necessary for python2
+from __future__ import print_function  # only necessary for python2
+from __future__ import division        # only necessary for python2 
+try:                                   # only necessary for python2
+    input = raw_input                  # only necessary for python2
+except NameError:                      # only necessary for python2
+    pass                               # only necessary for python2
 
-import random    # ab hier ist der code für python3 und python2 gleich
+import random    # 
 
 
-def wait(msg="drücke ENTER"):
+def wait(msg="press ENTER"):
     a = input(msg)
     return a
 
 
 def loot():
-    """erzeuge einen zufälligen Gegenstand"""
-    zeugs = ["Müll", "Knochen", "Münze", "Taschenmesser", "Stoffreste",
-             "Essbesteck", "Spielzeug", "Schwert", "Rüstung",
-             "Edelstein", "Heiltrank", "Schild"]
+    """create an item"""
+    zeugs = ["trash", "bone", "coin", "knife", "rags",
+             "fork", "toy", "splayer_posrd", "armor",
+             "gem", "healing potion", "shield"]
     return random.choice(zeugs)   
 
 
 def hilfe():
-    """zeigt hilfstext, wartet auf ENTER Taste"""
+    """show help text, waits for ENTER key"""
     print("- - - - - - - - - - - - - - - - - - - - - - - - - - - -")
-    print("Befehle:")
-    print("[w] [a] [s] [d]......steuere den Spieler")
-    print("[<] [>]..............Level rauf / Level runter")
-    print("[i]..................zeige Rucksack (inventory)")
-    print("[quit] [exit] [Q]....Spiel verlassen")        
-    print("[?] [help]...........diesen Hilfstext anzeigen")
-    print("[q]..................Heiltrank trinken (quaff potion)")
-    print("[Enter]..............eine Runde warten")
+    print("commands:")
+    print("[w] [a] [s] [d]......player movement")
+    print("[<] [>]..............go up / go down (at stairs)")
+    print("[i]..................inventory")
+    print("[quit] [exit] [Q]....quit the game")        
+    print("[?] [help]...........show this help text")
+    print("[q]..................quaff healing potion")
+    print("[Enter]..............wait one turn")
     print("- - - - - - - - - - - - - - - - - - - - - - - - - - - -")
-    print("Legende:")
-    print("[#]..................Mauer")
-    print("[.]..................Boden")
-    print("[M]..................Monster")
-    print("[k]..................Schlüssel (key)")
-    print("[L]..................Gegenstand (loot)")
-    print("[D]..................Türe (door)")
-    print("[!]..................Schild")
+    print("symbols:")
+    print("[#]..................wall")
+    print("[.]..................floor")
+    print("[M],[B],[S]..........monster, boss, statue")
+    print("[k]..................key")
+    print("[L]..................loot")
+    print("[D]..................door (closed)")
+    print("[!]..................warning sign")
     print("- - - - - - - - - - - - - - - - - - - - - - - - - - - -")
     wait()
 
 
-def kampfrunde(m1, m2):
-    txt = []         # """ Spieler kämpft gegen Monster Object"""
+def combat_round(m1, m2):
+    txt = []         # 
     if m1.hitpoints > 0 and m2.hitpoints > 0:
-        txt.append("{} ({} hp) schlägt nach {} ({} hp)".format(m1.name, m1.hitpoints, m2.name, m2.hitpoints))
-        if "Schwert" in m1.rucksack:      # and rucksack["Waffe"] >0:
+        txt.append("{} ({} hp) swings at {} ({} hp)".format(m1.name, m1.hitpoints, m2.name, m2.hitpoints))
+        if "splayer_posrd" in m1.inventory:      # and inventory["weapon"] >0:
             damage = random.randint(1, 4)
-            waffe = "Schwert"
-        elif "Taschenmesser" in m1.rucksack: 
+            weapon = "splayer_posrd"
+        elif "knife" in m1.inventory: 
             damage = random.randint(1, 3)
-            waffe = "Taschenmesser"
+            weapon = "knife"
         else:
             damage = random.randint(1, 2)
-            waffe = "Faust"
-        txt.append("{} attackiert {} mit {} für {} Schaden".format(
-              m1.name, m2.name, waffe, damage))
-        if "Rüstung" in m2.rucksack: 
+            weapon = "fist"
+        txt.append("{} attacks {} with {} for {} raw damage".format(
+              m1.name, m2.name, weapon, damage))
+        if "armor" in m2.inventory: 
             damage -= 1
-            txt.append("Rüstung von {} absorbiert einen Schadenspunkt".format(m2.name))
-        if "Schild" in m2.rucksack:
+            txt.append("armor of {} absorbs 1 point of damage ".format(m2.name))
+        if "shield" in m2.inventory:
             damage -= 1
-            txt.append("Schild von {} aborbiert einen Schadenspunkt".format(m2.name))
+            txt.append("Schield of {} absorbs 1 point of damage ".format(m2.name))
         if damage > 0:
             m2.hitpoints -= damage
-            txt.append("{} verliert {} hitpoints ({} hp übrig)".format(m2.name, damage, m2.hitpoints))
+            txt.append("{} looses {} hitpoints ({} hp left)".format(m2.name, damage, m2.hitpoints))
         else:
-            txt.append("{} bleibt unverletzt".format(m2.name))
+            txt.append("{} stays unharmed".format(m2.name))
     #return txt
     for line in txt:
         print(line)
@@ -87,59 +87,58 @@ class Monster(object):
         self.x = x
         self.y = y
         self.name = "Monster"
-        self.rucksack = {}
-        for z in ["Taschenmesser", "Schwert", "Schild", "Rüstung"]:
+        self.inventory = {}
+        for z in ["knife", "splayer_posrd", "shield", "armor"]:
             if random.random() < 0.1:  # 10% Chance
-                self.rucksack[z] = 1
+                self.inventory[z] = 1
         
         
 class Player(Monster):
-    def __init__(self, x, y, hp=25):
+    def __init__(self, x, y, hp=25, name="Player"):
         Monster.__init__(self, x, y, hp)
-        # self.rucksack = {}   # lösche zufallsausrüstung von class Monster
-        self.name = "Spieler"
+        self.name = name
         self.keys = 0
-        self.z = 0             # 0 ist der erste Level, 1 ist der 2. Level usw.
+        self.z = 0        # z=0 is the first dungeon, z=2 is the second dungeon level etc.
 
-    def zeige_rucksack(self):
-        """Zeigt Anzahl und Art von Gegenständen im Rucksack"""
-        print("Folgende Sachen befinden sich in deinem Rucksack:")
-        if len(self.rucksack) == 0:
-            print("dein Rucksack ist leer")
+    def show_inventory(self):
+        """Zeigt Anzahl und Art von Gegenständen im inventory"""
+        print("you carry with you those items:")
+        if len(self.inventory) == 0:
+            print("your inventory is empty")
         else:
-            print("Anzahl, Gegenstand")
+            print("amount, description")
             print("==================")
-            for ding in self.rucksack:
-                print(self.rucksack[ding], ding)
+            for thing in self.inventory:
+                print(self.inventory[thing], thing)
                 
-    def nimm(self, zeug):
-        """Erhöht Anzahl von Gegenständen im Rucksack"""
-        if zeug in self.rucksack:
-            self.rucksack[zeug] += 1
+    def take(self, thing):
+        """increase amount of a specific thing in the inventory"""
+        if thing in self.inventory:
+            self.inventory[thing] += 1
         else:
-            self.rucksack[zeug] = 1
+            self.inventory[thing] = 1
 
 
 class Level(object):
-    def __init__(self, dateiname):
-        """liest den dateinamen ein und erzeugt ein Level-Object"""
+    def __init__(self, filename):
+        """liest den filenamen ein und erzeugt ein Level-Object"""
         self.lines = []
-        self.schilder = {}       # schildnummer: schildtext
+        self.signs = {}       # schildnummer: schildtext
         self.monsters = []
-        self.sichtweite = 10
-        with open(dateiname) as f:
+        #self.sight_radius = 10
+        with open(filename) as f:
             y = 0
             for line in f:
                 goodline = ""
                 if line[0] in "123456789":
-                    self.schilder[line[0]] = line[1:-1]
+                    self.signs[line[0]] = line[1:-1] # strip the first and last char
                     continue
                 elif line.strip() == "":
                     continue
                 else: 
                     x = 0
                     for char in line[:-1]:
-                        if char == "M":
+                        if char == "M" or char =="B" or char == "S":  # monster, boss, statue    
                             self.monsters.append(Monster(x, y))
                             goodline += "."
                         else:
@@ -149,22 +148,23 @@ class Level(object):
                 y += 1
     
     def update(self):
-        """löscht alle Monster die keine hitpoints mehr haben"""
+        """remove all monsters with fewer than 1 hitpoints from level"""
         self.monsters = [m for m in self.monsters if m.hitpoints > 0]
                     
-    def ersetze(self, x, y, new="."):
-        """ersetzt ein Zeichen in einem Level durch das new Zeichen"""
+    def replace_line(self, x, y, new="."):
+        """replace a char in  a line with another one
+           do not confuse with the in-buildt string method .replace()"""
         self.lines[y] = self.lines[y][:x]+new+self.lines[y][x+1:] 
     
     def is_monster(self, x, y):
-        """testet ob sich an einer stelle ein monster befindet"""
+        """testing if a monster is at a specific position"""
         for monster in self.monsters:
             if monster.hitpoints > 0 and monster.x == x and monster.y == y:
-                return monster
+                return monster  # every value other than 0 or False is  True
         return False
         
     def move_monster(self, player):
-        """bewegt Monster zufällig (oder gar nicht)"""
+        """moves monster in a random direction (or not at all)"""
         for monster in self.monsters:
             x, y = monster.x, monster.y
             dirs = [(-1, 1), (0, 1), (1, 1), (-1, 0), (1, 0), (-1, -1), (0, -1), (1, -1)]
@@ -172,17 +172,17 @@ class Level(object):
             if self.is_monster(x + dx, y + dy):
                 continue
             if x+dx == player.x and y+dy == player.y:
-                kampfrunde(monster, player)
-                kampfrunde(player, monster)
-                continue     # Monster würde in player hineinlaufen
-            wohin = self.lines[y+dy][x+dx]
-            if wohin in "#TD":
-                continue     # Monster würde in Falle oder Mauer oder Tür laufen
+                combat_round(monster, player)
+                combat_round(player, monster)
+                continue     # monster should not run into player
+            player_poshin = self.lines[y+dy][x+dx]
+            if player_poshin in "#TD":
+                continue     # monster should not run into Traps, Doors or Walls
             monster.x += dx
             monster.y += dy 
     
     def paint(self, px, py):
-        """druckt den Level und die Position des spielers (px,py)"""
+        """print out the actual level with monsters and player"""
         y = 0
         for line in self.lines:
             x = 0
@@ -192,34 +192,34 @@ class Level(object):
                 elif self.is_monster(x, y):
                     print("M", end="")
                 elif char in "123456789":
-                    print("!", end="")
+                    print("!", end="")  # warning sign
                 else:
-                    print(char, end="")
+                    print(char, end="") 
                 x += 1
-            print()
+            print()  # print line ending
             y += 1
 
 
-def game(levels , playerx=1, playery=1, playerhp=50):
-    p = Player(playerx, playery, playerhp)              # Spieler startet mit 50 hitpoints auf Position x:1,y:1
+def game(levels , playerx=1, playery=1, playerhp=50, playername="Rambo"):
+    p = Player(playerx, playery, playerhp, playername)          # player begins with 50 hitpoints at x:1,y:1
     status = ""
-    while p.hitpoints > 0:            # so lange der player mehr als null hitpoints hat
+    while p.hitpoints > 0 and p.z >= 0:            # run this loop as long as the player is alive
         level = levels[p.z]
         level.paint(p.x, p.y)
         print(status)                 
         dx, dy = 0, 0
-        status = ""                   # ----------- ask ----------------------  
-        a = input("was jetzt? hp: {} keys: {} >".format(p.hitpoints, p.keys))
+        status = ""                    # ----------- ask ----------------------  
+        a = input("what now? hp:{} keys:{} >".format(p.hitpoints, p.keys))
         if a == "exit" or a == "quit" or a == "Q":  # ----- quit ------
             break    
-        elif a == "i":                # --------- inventory --------
-            p.zeige_rucksack()
+        elif a == "i":                 # --------- inventory --------
+            p.show_inventory()
             wait()
-            continue
+            continue                   # do not move monsters etc when inspecting inventory
         elif a == "?" or a == "help":  # ---- help -------
             hilfe()
             continue
-        if a == "a":                   # ------------- Bewegung ---------
+        if a == "a":                   # ------------- move the player ---------
             dx -= 1
         elif a == "d":
             dx += 1
@@ -227,72 +227,76 @@ def game(levels , playerx=1, playery=1, playerhp=50):
             dy -= 1
         elif a == "s":
             dy += 1
-        elif a == "<":                 # ------ level up
+        elif a == "<":                 # ------ move level up ---------
             if level.lines[p.y][p.x] != "<":
-                status = "Du musst erst eine Stiege nach oben finden [<]"
+                status = "You need to find a stair upwards [<]"
+                continue
             elif p.z == 0:
-                print("Du verlässt den Dungeon und kehrst zurück an die Oberfläche")
+                print("You leave the dungeon and return to the surface world.")
                 break
             p.z -= 1
-        elif a == ">":                  # ------ level down
+            continue
+        elif a == ">":                 # ------ move level down ------
             if level.lines[p.y][p.x] != ">":
-                status = "Du musst erst eine Stiege nach unten finden [>]"
+                status = "You need to find a stair downwards [>]"
+                continue
             p.z += 1
-        elif a == "q":                  # --------- Heiltrank ------------
-            if "Heiltrank" in p.rucksack and p.rucksack["Heiltrank"] > 0:
-                p.rucksack["Heiltrank"] -= 1
+            continue
+        elif a == "q":                  # --------- healing potion ------------
+            if "healing potion" in p.inventory and p.inventory["healing potion"] > 0:
+                p.inventory["healing potion"] -= 1
                 effekt = random.randint(2, 5)
                 p.hitpoints += effekt
-                status = "Du trinkst einen Heiltrank und erhälst {} hitpoints".format(effekt)
+                status = "you drink one healing potion and win back {} hitpoints".format(effekt)
             else:
-                status = "in Deinem Rucksack befindet sich kein Heiltrank. Sammle Loot!"
-        wohin = level.lines[p.y+dy][p.x+dx] # ----- testen ob spieler gegen Wand, Monster oder Tür läuft ----
+                status = "you have no healing potion. Gather more loot!"
+        player_poshin = level.lines[p.y+dy][p.x+dx] # ----- player runs into door, trap wall? ----
         monster = level.is_monster(p.x+dx, p.y+dy)
         if monster:
-            kampfrunde(p, monster)
-            kampfrunde(monster, p)
-        elif wohin == "#":         # in die Wand gelaufen?
-            status = "aua, nicht in die Wand laufen!"
+            combat_round(p, monster)
+            combat_round(monster, p)
+        elif player_poshin == "#":         # running into walls?
+            status = "Ouch, don't run into walls please!"
             p.hitpoints -= 1
-        elif wohin == "D":
+        elif player_poshin == "D":
             if p.keys > 0:
                 p.keys -= 1
-                status = "Türe aufgesperrt (1 Schlüssel verbraucht)"
-                level.ersetze(p.x+dx, p.y+dy, ".") 
+                status = "used 1 key to open door"
+                level.replace_line(p.x+dx, p.y+dy, ".") 
             else:
-                status = "Aua! Du knallst gegen eine versperrte Türe"
+                status = "Ouch! This door was closed. Find a key."
                 p.hitpoints -= 1
         else:
             p.x += dx
-            p.y += dy   # ----------------- spieler ist an einer neuen position --------
-        wo = level.lines[p.y][p.x]                # wo bin ich jetzt
-        if wo in "123456789":
-                status = "hier steht: " + level.schilder[wo]
-        elif wo == "T":                           # in die Falle gelaufen?
-            schaden = random.randint(1, 4)
-            status = "aua, in die Falle gelaufen. {} Schaden!".format(schaden)
-            p.hitpoints -= schaden
-            if random.random() < 0.5:             # 50% Chance # Falle verschwunden?
-                level.ersetze(p.x, p.y, ".")
-                status += " Falle kaputt!"
-        elif wo == "k":                           # schlüssel gefunden? 
-            status = "Schlüssel gefunden!"
+            p.y += dy   # ----------------- player is at a new position --------
+        player_pos = level.lines[p.y][p.x]                # where am i now
+        if player_pos in "123456789":
+                status = "a sign says: " + level.signs[player_pos]
+        elif player_pos == "T":                           # run into trap?
+            damage = random.randint(1, 4)
+            status = "Ouch, that was a trap! {} damage!".format(damage)
+            p.hitpoints -= damage
+            if random.random() < 0.5:             # 50% Chance to destroy trap?
+                level.replace_line(p.x, p.y, ".")
+                status += "the trap is destroyed!"
+        elif player_pos == "k":                           # found key?
+            status = "i found a key!"
             p.keys += 1
-            level.ersetze(p.x, p.y, ".")
-        elif wo == "L":                           # Loot gefunden ?
-            p.nimm(loot())
-            level.ersetze(p.x, p.y, ".")
-        elif wo == "<":
-            status = "Stiege rauf: [<] drücken und [Enter] zum raufgehen"
-        elif wo == ">":
-            status = "Stiege runter: [>] drücken und [Enter] zum runtergehen"
-        level.update()                             # tote monster löschen
-        level.move_monster(p)                      # lebende monster bewegen
+            level.replace_line(p.x, p.y, ".")
+        elif player_pos == "L":                           # found loot?
+            p.take(loot())
+            level.replace_line(p.x, p.y, ".")
+        elif player_pos == "<":
+            status = "stair upwards. press [<] and [Enter] to climb up"
+        elif player_pos == ">":
+            status = "stair downwards. press [>] and [Enter] to climb down"
+        level.update()                             # remove dead monsters
+        level.move_monster(p)                      # move around alive monsters
     print("Game Over. Hitpoints: {}".format(p.hitpoints))
     if p.hitpoints < 1:
-        print("Du bist tot")
-    p.zeige_rucksack()
+        print("You are dead.")
+    p.show_inventory()
 
 if __name__ == "__main__":
-    # Spieler startet in level1.txt auf position x1,y1 mit 50 hitpoints
-    game([Level("level1demo.txt"), Level("level2demo.txt")], 1, 1, 50)
+    # start a dungeon with level1demo.txt and level2demo.txt, player "Rambo" starts at x1,x2 with 50 hitpoints
+    game([Level("level1demo.txt"), Level("level2demo.txt")], 1, 1, 50, "Rambo")
