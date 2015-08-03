@@ -78,6 +78,20 @@ def combat_round(m1, m2):
     wait()
 
 
+class Error(Exception):
+    """Base class for exceptions in this module."""
+    pass
+
+
+class LevelError(Error):
+    """a specific Exception subclass handling level design errors"""
+    def __init__(self, value):
+        self.value = value
+
+    def __str__(self):
+        return repr(self.value)
+
+
 class Monster(object):
     def __init__(self, x, y, hp=0):
         if hp == 0:
@@ -88,10 +102,17 @@ class Monster(object):
         self.y = y
         self.name = "Monster"
         self.inventory = {}
-        for z in ["knife", "splayer_posrd", "shield", "armor"]:
+        for z in ["knife", "sword", "shield", "armor"]:
             if random.random() < 0.1:  # 10% Chance
                 self.inventory[z] = 1
-        
+
+class Boss(Monster):
+    def __init__(self, x, y, hp=0):
+        Monster.__init__(self, x, y, hp)
+
+class Statue(Monster):
+    def __init__(self, x, y, hp=0):
+        Monster.__init__(self, x, y, hp)
         
 class Player(Monster):
     def __init__(self, x, y, hp=25, name="Player"):
@@ -120,32 +141,134 @@ class Player(Monster):
 
 
 class Level(object):
-    def __init__(self, filename):
-        """liest den filenamen ein und erzeugt ein Level-Object"""
-        self.lines = []
-        self.signs = {}       # schildnummer: schildtext
-        self.monsters = []
-        #self.sight_radius = 10
-        with open(filename) as f:
-            y = 0
+
+    # class attribute
+    LEGEND = {
+    "#": "wall",
+    "D": "door",
+    ".": "floor",
+    "<": "stair up",
+    ">": "stair down",
+    "T": "trap",
+    "M": "monster",
+    "B": "Boss",
+    "S": "Statue",
+    "L": "loot",
+    "k": "key"
+    }
+
+    @staticmethod
+    def load_level(filename):
+        """load a text file and return a list of non-empty lines without newline characters"""
+        lines = []
+        with open(filename, "r") as f:
             for line in f:
-                goodline = ""
-                if line[0] in "123456789":
-                    self.signs[line[0]] = line[1:-1] # strip the first and last char
-                    continue
-                elif line.strip() == "":
-                    continue
-                else: 
-                    x = 0
-                    for char in line[:-1]:
-                        if char == "M" or char =="B" or char == "S":  # monster, boss, statue    
-                            self.monsters.append(Monster(x, y))
-                            goodline += "."
-                        else:
-                            goodline += char
-                        x += 1
-                self.lines.append(goodline)
-                y += 1
+                if line.strip() != "":
+                   lines.append(line[:-1])  # exclude newline char
+        return lines
+
+    @staticmethod
+    def check_level(filename):
+        """check for level layout errors and returns list of lines and dict of level warning signs"""
+        lines = Level.load_level(filename)
+        if len(lines) == 0:
+            raise LevelError("{}: level has no lines".format(filename))
+        width = len(lines[0])  # length of first line of level
+        line_number = 1
+        has_stairs_up = False
+        warning_signs = {}
+        good_lines = []
+        for line in lines:
+            if line[0] in "0123456789":
+                if line[1:].strip() == "":
+                    raise LevelError("{}: warning sign {} definition without text".format(filename, line[0]) +
+                                     " in line number {}".format(line_number))
+                warning_signs[line[0]] = line[1:].strip()
+        # read all lines again from start, because we have now a functional warning_signs dictionary
+        for line in lines:
+            if line[0] in "0123456789":
+                continue  # warning sign definition text, ignore this line
+            if len(line) != width:
+                raise LevelError("{}: bad line length".format(filename) +
+                                 " in line number {}".format(line_number))
+            x = 1
+            for char in line:
+                if char == "<":
+                    has_stairs_up = True
+                elif char in "0123456789":
+                    if char not in warning_signs:
+                        raise LevelError("{}: warning sign symbol {} without definition".format(filename, char) +
+                                         " in line number {}".format(line_number))
+                elif char not in Level.LEGEND:
+                    raise LevelError("{}: line {} pos {}:".format(filename, line_number, x) +
+                                     "char {} is not in Level.LEGEND".format(char)+
+                                     "\n allowed Symbols are numbers for warning signs and:\n"+
+                                     str(Level.LEGEND.keys()))
+                x += 1
+            good_lines.append(line)
+            line_number += 1
+        if not has_stairs_up:
+            raise LevelError("{}: level has no stair up sign (<)".format(
+                             filename))
+        return good_lines, warning_signs
+
+    @staticmethod
+    def check_levels(*args):
+        """load level file names (comma separated) from disk,
+           display errors and return list of error free Level() objects"""
+        # args are the level names, like "level1.txt". Use os.path.join() to access a file in a specific folder
+        levels = []
+        for name in args:
+            good_lines = False
+            try:
+                good_lines, warning_signs = Level.check_level(name)
+            except IOError:
+                print('Error: cannot open', name)
+            except LevelError as e:
+                print("sadly, there were errors while loading level(s):")
+                print(e)
+            if good_lines:
+                levels.append(Level(good_lines, warning_signs))
+        print("{} level(s) were successfully added to the game".format(len(levels)))
+        print("{} level(s) were not loaded because of errors".format(len(args)-len(levels)))
+        if len(levels) > 0:
+            wait("press [Enter] to start the game")
+        else:
+            sys.exit("no levels loaded - game can not start")
+        return levels
+
+    def __init__(self, source_lines, warning_signs):
+        """liest den filenamen ein und erzeugt ein Level-Object"""
+        self.source_lines = source_lines
+        self.lines = []
+        self.layout = []
+        self.warning_signs = warning_signs       # schildnummer: schildtext
+        self.monsters = []
+
+        #self.sight_radius = 10
+
+        y = 0
+        for line in self.source_lines:
+            good_line = ""
+            x = 0
+            for char in line:
+                if char == "M":
+                    self.monsters.append(Monster(x, y))
+                    good_line += "."
+                elif char == "B":
+                    self.monsters.append(Boss(x,y))
+                    good_line += "."
+                elif char == "S":
+                    self.monsters.append(Statue(x,y))
+                    good_line += "."
+                else:
+                   good_line += char
+                x += 1
+            self.lines.append(good_line)
+            y += 1
+
+        print("level init: lines:")
+        print(self.lines)
     
     def update(self):
         """remove all monsters with fewer than 1 hitpoints from level"""
@@ -175,14 +298,17 @@ class Level(object):
                 combat_round(monster, player)
                 combat_round(player, monster)
                 continue     # monster should not run into player
-            player_poshin = self.lines[y+dy][x+dx]
-            if player_poshin in "#TD":
+            new_pos = self.lines[y+dy][x+dx]
+            if new_pos in "#TD":
                 continue     # monster should not run into Traps, Doors or Walls
             monster.x += dx
             monster.y += dy 
     
     def paint(self, px, py):
         """print out the actual level with monsters and player"""
+
+
+
         y = 0
         for line in self.lines:
             x = 0
@@ -200,7 +326,8 @@ class Level(object):
             y += 1
 
 
-def game(levels , playerx=1, playery=1, playerhp=50, playername="Rambo"):
+def game(levels, playerx=1, playery=1, playerhp=50, playername="Rambo"):
+    levels = levels
     p = Player(playerx, playery, playerhp, playername)          # player begins with 50 hitpoints at x:1,y:1
     status = ""
     while p.hitpoints > 0 and p.z >= 0:            # run this loop as long as the player is alive
@@ -271,7 +398,7 @@ def game(levels , playerx=1, playery=1, playerhp=50, playername="Rambo"):
             p.y += dy   # ----------------- player is at a new position --------
         player_pos = level.lines[p.y][p.x]                # where am i now
         if player_pos in "123456789":
-                status = "a sign says: " + level.signs[player_pos]
+                status = "a sign says: " + level.warning_signs[player_pos]
         elif player_pos == "T":                           # run into trap?
             damage = random.randint(1, 4)
             status = "Ouch, that was a trap! {} damage!".format(damage)
@@ -298,5 +425,5 @@ def game(levels , playerx=1, playery=1, playerhp=50, playername="Rambo"):
     p.show_inventory()
 
 if __name__ == "__main__":
-    # start a dungeon with level1demo.txt and level2demo.txt, player "Rambo" starts at x1,x2 with 50 hitpoints
-    game([Level("level1demo.txt"), Level("level2demo.txt")], 1, 1, 50, "Rambo")
+    level_list = Level.check_levels("level1demo.txt","level2demo.txt") # load  level1demo.txt and level2demo.txt
+    game(level_list, 1, 1, 50, "Rambo") # player "Rambo" starts at x1,x2 with 50 hitpoints
