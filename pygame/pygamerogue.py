@@ -588,12 +588,12 @@ class Level(object):
         return good_lines, warning_signs
 
     @staticmethod
-    def check_levels(*args):
+    def check_levels(list_of_levelsourcefilenames):
         """load level file names (comma separated) from disk,
            display errors and return list of error free Level() objects"""
         # args are the level names, like "level1.txt". Use os.path.join() to access a file in a specific folder
         levels = []
-        for name in args:
+        for name in list_of_levelsourcefilenames:
             good_lines = False
             try:
                 good_lines, warning_signs = Level.check_level(name)
@@ -604,7 +604,7 @@ class Level(object):
                 print(e)
             if good_lines:
                 levels.append(Level(good_lines, warning_signs))
-        fails = len(args) - len(levels)
+        fails = len(list_of_levelsourcefilenames) - len(levels)
         print("{} level(s) were successfully added to the game".format(len(levels)))
         if len(levels) < 1:
             sys.exit("no levels loaded - game can not start")
@@ -629,7 +629,7 @@ class Level(object):
         #self.sichtweite = 10
         #with open(dateiname) as f:
         y = 0
-        for line in self.line:
+        for line in self.lines:
             x = 0
             for char in line:
                 self.layout[(x, y)] = Floor()  # if not overwritten later by a Wall() object etc., each tile is a Floor()
@@ -739,7 +739,7 @@ class PygView(object):
     scrollx = 0  # class variables, can be read from everywhere
     scrolly = 0
 
-    def __init__(self, levelnames, width=640, height=400, x=1, y=1, xp=0, level=1, hp=50, fullscreen=False):
+    def __init__(self, level_sourcefilenames, width=640, height=400, x=1, y=1, xp=0, level=1, hp=50, fullscreen=False):
         if fullscreen:
             winstyle = pygame.FULLSCREEN
         else:
@@ -789,9 +789,7 @@ class PygView(object):
         # ---- ask player to enter his name --------
         self.player.name = ask("Your name [Enter]? >>", self.screen, PygView.DRUID )
         self.player.name = self.player.name[0].upper() + self.player.name[1:].lower()
-        self.levels = []
-        for filename in levelnames:
-            self.levels.append(Level(filename))
+        self.levels = Level.check_levels(level_sourcefilenames)  # checked by Level.check_levels()
         self.status = [""]
         self.level = self.levels[0]
         self.seconds = 0
@@ -1049,30 +1047,30 @@ class PygView(object):
                     # ------------- warning signs ----------
                     for sign in self.level.signs:
                         if sign.x == self.player.x and sign.y == self.player.y:
-                            self.status.append("{}: hier steht: {}".format(self.turns, sign.text))
+                            self.status.append("{}: a sign says: {}".format(self.turns, sign.text))
                     if type(where).__name__ == "Stair":
                         if where.down:
-                            self.status.append("{}: Stiege runter: [>] drücken zum runtergehen".format(self.turns))
+                            self.status.append("{}: stair down: press [>] to climb down".format(self.turns))
                         else:
-                            self.status.append("{}: Stiege rauf: [<] drücken zum raufgehen".format(self.turns))
-                    # --------- liegt eine Falle auf dem Boden herum ?
+                            self.status.append("{}: stair up: press [<] to climb up".format(self.turns))
+                    # --------- is there a trap ? --------------
                     for trap in self.level.traps:
                         if trap.x == self.player.x and trap.y == self.player.y:
                             damage = random.randint(1, 4)
-                            self.status.append("{}: Aua, in die Falle gelaufen. {} damage!".format(self.turns, damage))
+                            self.status.append("{}: Ouch, that hurts! A trap, {} damage!".format(self.turns, damage))
                             self.player.hitpoints -= damage
-                            Flytext(self.player.x, self.player.y, "a trap! Dmg: {}".format(damage))
+                            Flytext(self.player.x, self.player.y, "A trap! Dmg: {}".format(damage))
                             if random.random() < 0.5:             # 50% Chance # Falle verschwunden?
-                                self.status.append("{}: Falle kaputt!".format(self.turns))
+                                self.status.append("{}: trap destroyed!".format(self.turns))
                                 trap.hitpoints = 0
-                    # --------- liegt ein Schlüssel auf dem Boden herum ?
+                    # --------- is there a key ? -------------
                     for key in self.level.keys:
                         if key.x == self.player.x and key.y == self.player.y:
                             key.carried = True
                             self.player.keys.append(key)
-                            self.status.append("{} Schlüssel gefunden".format(self.turns))
-                            Flytext(self.player.x, self.player.y, "i found a key", (0, 200, 0))
-                    # --------- liegt Loot auf dem Boden herum ?
+                            self.status.append("{} key found".format(self.turns))
+                            Flytext(self.player.x, self.player.y, "a key", (0, 200, 0))
+                    # --------- is there loot ? --------------
                     for i in self.level.loot:
                         if i.x == self.player.x and i.y == self.player.y and not i.carried:
                             i.carried = True
@@ -1080,61 +1078,58 @@ class PygView(object):
                                 self.player.inventory[i.text] += 1
                             else:
                                 self.player.inventory[i.text] = 1
-                            self.status.append("{} Loot gefunden! ({})".format(self.turns, i.text))
-                            Flytext(self.player.x, self.player.y, i.text + " gefunden!", (0, 200, 0))
-                    # ------------------- level update (Fallen, Türen etc. löschen ------
+                            self.status.append("{} Loot found! ({})".format(self.turns, i.text))
+                            Flytext(self.player.x, self.player.y, i.text + " found!", (0, 200, 0))
+                    # ------------------- level update (remove old traps, doors etc.) ------
                     self.level.update()                                             # tote monster löschen
-                    # -------------- Monster bewegen ------------------
-                    #self.level.move_monster(self.player, self)                      # lebende monster bewegen
-                    #    def move_monster(self, player, game):
-                    #"""bewegt Monster (NICHT den Player) zufällig (oder gar nicht)"""
+                    # -------------- move monsters ------------------
                     for monster in self.level.monsters:
                         x, y = monster.x, monster.y
                         dx, dy = monster.ai(self.player)
                         if self.level.is_monster(x + dx, y + dy):
-                            continue  # Monster wollte in anderes Monster laufen, wartet stattdfood
+                            continue  # monster should not run into another monster
                         if x+dx == self.player.x and y+dy == self.player.y:
                             self.status.extend(combat_round(monster, self.player, self.level))
                             self.status.extend(combat_round(self.player, monster, self.level))
                             self.count_monsters()
-                            continue     # Monster würde in player hineinlaufen, kämpft stattdfood
+                            continue     # monster should not run into player, it should fight him
                         whereto = self.level.layout[(x+dx, y+dy)]
                         if type(whereto).__name__ == "Wall":
-                            continue     # Monster würde in Mauer laufen, wartet stattdfood
+                            continue     # monster should not run into wall. waiting instead
                         if len([t for t in self.level.traps if t.x == x + dx and t.y == y + dy]) > 0:
-                            continue     # Monster würde in Falle laufen, wartet stattdfood
+                            continue     # monster should not run into trap. waiting instead
                         if len([d for d in self.level.doors if d.x == x + dx and d.y == y + dy]) > 0:
-                            continue # Monster würde in Türe laufen, wartet stattdfood
+                            continue  # monster should not run into door. waiting instead
                         monster.x += dx
                         monster.y += dy
-
-
-            #pressedkeys = pygame.key.get_pressed() 
-            # ------------ pictureschirm neu malen, Sprites bewegen --------------
+            #pressedkeys = pygame.key.get_pressed()
+            # if pygame.K_x in pressedkeys:
+            #      print("x key is pressed")
+            # ------------ redraw screen, blit the sprites --------------
             pygame.display.set_caption("  press Esc to quit. Fps: %.2f (%i x %i)"%(
-                                self.clock.get_fps(), self.width, self.height))
-            self.paint()
+                                       self.clock.get_fps(), self.width, self.height))
+            self.paint() # paint this level
             #  ------- draw the sprites ------
             #self.allgroup.clear(self.screen, self.background)
             self.allgroup.update(self.seconds)
             self.allgroup.draw(self.screen)
             # ---- proceed to next pygame screen
             pygame.display.flip()
-        #--------------------------- Game Over ----------------------
-        lines=[]
+        # --------------------------- Game Over ----------------------
+        lines = []
         lines.append("**** Game Over *******")
         lines.append("Hitpoints: {}".format(self.player.hitpoints))
         lines.append("Level: {}".format(self.player.level))
-        lines.append("Rang: {}".format(self.player.rank))
-        lines.append("Siege: {}".format(self.player.kills))
+        lines.append("Rank: {}".format(self.player.rank))
+        lines.append("Victories: {}".format(self.player.kills))
         if self.player.hitpoints < 1:
-            lines.append("Du bist tot.")
+            lines.append("You are dead.")
         else:
-            lines.append("Du hast überlebt")
-        lines.append("-------------Dein inventory:----------")
+            lines.append("You survived!")
+        lines.append("-------------Your inventory:----------")
         for line in self.player.show_inventory():
             lines.append(line)
-        lines.append("------------ von dir besiegt wurden: ------------")
+        lines.append("------------ You killed: ------------")
         for v in self.player.killdict:
             lines.append("{} {}".format(self.player.killdict[v], v))
         display_textlines(lines, self.screen,  (255,255,255), PygView.GAMEOVER)
@@ -1142,13 +1137,11 @@ class PygView(object):
         pygame.mixer.music.stop()
         for line in lines:
             print(line)
-     
-        pygame.quit()    # beendet pygame
-        sys.exit()      # beendet python
+        pygame.quit()    # end  pygame  # TODO: game sometimes hangs here. PYthon3+pygame bug?
+        sys.exit()      # end python
 
 
 if __name__ == '__main__':
-    levels = ["level1demo.txt",
-              "level2demo.txt"]
-    # 800 x 400 pixel, Player startet at x=1, y=1, Erfahrung: 0 xp, level: 1 HP: 50
-    PygView(levels, 1600, 1000, 1, 1, 0, 1, 50).run()
+    level_sourcefilenames = ["level1demo.txt", "level2demo.txt"]  # add your own level files here. use os.path.join() for other folders
+    # 1600 x 1000 pixel, Player start at x=1, y=1, in level 0 (the first level) with 0 xp, has level 1 and 50 hit points
+    PygView(level_sourcefilenames, 1600, 1000, 1, 1, 0, 1, 50).run()
