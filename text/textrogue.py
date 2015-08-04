@@ -6,7 +6,8 @@ try:                                   # only necessary for python2
 except NameError:                      # only necessary for python2
     pass                               # only necessary for python2
 
-import random    # 
+import random
+import sys
 
 
 def wait(msg="press ENTER"):
@@ -22,7 +23,7 @@ def loot():
     return random.choice(zeugs)   
 
 
-def hilfe():
+def help():
     """show help text, waits for ENTER key"""
     print("- - - - - - - - - - - - - - - - - - - - - - - - - - - -")
     print("commands:")
@@ -60,7 +61,7 @@ def combat_round(m1, m2):
             damage = random.randint(1, 2)
             weapon = "fist"
         txt.append("{} attacks {} with {} for {} raw damage".format(
-              m1.name, m2.name, weapon, damage))
+                   m1.name, m2.name, weapon, damage))
         if "armor" in m2.inventory: 
             damage -= 1
             txt.append("armor of {} absorbs 1 point of damage ".format(m2.name))
@@ -72,7 +73,6 @@ def combat_round(m1, m2):
             txt.append("{} looses {} hitpoints ({} hp left)".format(m2.name, damage, m2.hitpoints))
         else:
             txt.append("{} stays unharmed".format(m2.name))
-    #return txt
     for line in txt:
         print(line)
     wait()
@@ -106,14 +106,17 @@ class Monster(object):
             if random.random() < 0.1:  # 10% Chance
                 self.inventory[z] = 1
 
+
 class Boss(Monster):
     def __init__(self, x, y, hp=0):
         Monster.__init__(self, x, y, hp)
 
+
 class Statue(Monster):
     def __init__(self, x, y, hp=0):
         Monster.__init__(self, x, y, hp)
-        
+
+
 class Player(Monster):
     def __init__(self, x, y, hp=25, name="Player"):
         Monster.__init__(self, x, y, hp)
@@ -164,7 +167,7 @@ class Level(object):
         with open(filename, "r") as f:
             for line in f:
                 if line.strip() != "":
-                   lines.append(line[:-1])  # exclude newline char
+                    lines.append(line[:-1])  # exclude newline char
         return lines
 
     @staticmethod
@@ -201,8 +204,8 @@ class Level(object):
                                          " in line number {}".format(line_number))
                 elif char not in Level.LEGEND:
                     raise LevelError("{}: line {} pos {}:".format(filename, line_number, x) +
-                                     "char {} is not in Level.LEGEND".format(char)+
-                                     "\n allowed Symbols are numbers for warning signs and:\n"+
+                                     "char {} is not in Level.LEGEND".format(char) +
+                                     "\n allowed Symbols are numbers for warning signs and:\n" +
                                      str(Level.LEGEND.keys()))
                 x += 1
             good_lines.append(line)
@@ -229,24 +232,22 @@ class Level(object):
                 print(e)
             if good_lines:
                 levels.append(Level(good_lines, warning_signs))
+        fails = len(args) - len(levels)
         print("{} level(s) were successfully added to the game".format(len(levels)))
-        print("{} level(s) were not loaded because of errors".format(len(args)-len(levels)))
-        if len(levels) > 0:
-            wait("press [Enter] to start the game")
-        else:
+        if len(levels) < 1:
             sys.exit("no levels loaded - game can not start")
+        elif fails > 0:
+            print("{} level(s) were not loaded because of errors".format(fails))
+            wait("press [Enter] to start the game anyway")
         return levels
 
     def __init__(self, source_lines, warning_signs):
-        """liest den filenamen ein und erzeugt ein Level-Object"""
+        """create a new Level object"""
         self.source_lines = source_lines
         self.lines = []
         self.layout = []
-        self.warning_signs = warning_signs       # schildnummer: schildtext
+        self.warning_signs = warning_signs       # {"number": "text of sign", }
         self.monsters = []
-
-        #self.sight_radius = 10
-
         y = 0
         for line in self.source_lines:
             good_line = ""
@@ -256,13 +257,13 @@ class Level(object):
                     self.monsters.append(Monster(x, y))
                     good_line += "."
                 elif char == "B":
-                    self.monsters.append(Boss(x,y))
+                    self.monsters.append(Boss(x, y))
                     good_line += "."
                 elif char == "S":
-                    self.monsters.append(Statue(x,y))
+                    self.monsters.append(Statue(x, y))
                     good_line += "."
                 else:
-                   good_line += char
+                    good_line += char
                 x += 1
             self.lines.append(good_line)
             y += 1
@@ -276,7 +277,7 @@ class Level(object):
                     
     def replace_line(self, x, y, new="."):
         """replace a char in  a line with another one
-           do not confuse with the in-buildt string method .replace()"""
+           do not confuse with the in-built string method .replace()"""
         self.lines[y] = self.lines[y][:x]+new+self.lines[y][x+1:] 
     
     def is_monster(self, x, y):
@@ -306,9 +307,6 @@ class Level(object):
     
     def paint(self, px, py):
         """print out the actual level with monsters and player"""
-
-
-
         y = 0
         for line in self.lines:
             x = 0
@@ -344,7 +342,7 @@ def game(levels, playerx=1, playery=1, playerhp=50, playername="Rambo"):
             wait()
             continue                   # do not move monsters etc when inspecting inventory
         elif a == "?" or a == "help":  # ---- help -------
-            hilfe()
+            help()
             continue
         if a == "a":                   # ------------- move the player ---------
             dx -= 1
@@ -377,7 +375,7 @@ def game(levels, playerx=1, playery=1, playerhp=50, playername="Rambo"):
                 status = "you drink one healing potion and win back {} hitpoints".format(effekt)
             else:
                 status = "you have no healing potion. Gather more loot!"
-        player_poshin = level.lines[p.y+dy][p.x+dx] # ----- player runs into door, trap wall? ----
+        player_poshin = level.lines[p.y+dy][p.x+dx]  # ----- player runs into door, trap wall? ----
         monster = level.is_monster(p.x+dx, p.y+dy)
         if monster:
             combat_round(p, monster)
@@ -425,5 +423,5 @@ def game(levels, playerx=1, playery=1, playerhp=50, playername="Rambo"):
     p.show_inventory()
 
 if __name__ == "__main__":
-    level_list = Level.check_levels("level1demo.txt","level2demo.txt") # load  level1demo.txt and level2demo.txt
+    level_list = Level.check_levels("level1demo.txt","level2demo.txt")  # load level1demo.txt and level2demo.txt
     game(level_list, 1, 1, 50, "Rambo") # player "Rambo" starts at x1,x2 with 50 hitpoints

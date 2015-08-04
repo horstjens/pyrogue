@@ -5,9 +5,8 @@ This project was originally made during prommaning courses for my students at
 http://spielend-programmieren.at. Versions in German language can be found 
 at https://github.com/horstjens/spielend-programmieren/tree/master/pyrogue
 
-This project is the internationa version in English language.
-It's an independent project on Github:
-Official repository is 
+This project is the international version in English language.
+Official repository url: https://github.com/horstjens/pyrogue
 
 
 all source code: GPL 3.0 License,
