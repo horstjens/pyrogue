@@ -24,6 +24,21 @@ import os
 import sys
 
 
+def re_roll(sides=6, number=1):
+    """roll 'number' of die and re-roll if the highest side was rolled
+       a six sided dice if rolling a 6 count as 5 and can roll again
+       this makes possible very high numbers with a very low chance"""
+    sum = 0
+    for _ in range(number):
+        while True:
+            roll = random.randint(1, sides)
+            if roll < sides:
+                sum += roll
+                break
+            sum += roll-1
+    return sum
+
+
 def write(msg="pygame is cool", fontcolor=(255,0,255), fontsize=42, font=None):
     """returns pygame surface with text"""
     myfont = pygame.font.SysFont(font, fontsize)
@@ -265,9 +280,9 @@ class Monster(object):
         else:
             self.picture = picture
         self.name = random.choice(("Frank", "Dilbert", "Bob", "Alice"))
-        self.strength = random.randint(1,10)
-        self.dexterity = random.randint(1,10)
-        self.intelligence = random.randint(1,10)
+        self.strength = random.randint(1, 6)
+        self.dexterity = random.randint(1, 6)
+        self.intelligence = random.randint(1, 6)
         self.inventory = {}
         for z in ["knife", "sword", "shield", "armor"]:
             if random.random() < 0.1:  # each Item has a 10% Chance 
@@ -471,6 +486,22 @@ class Trap(Item):
         self.level = random.randint(1, 5)
         self.hitpoints = self.level * 2
         self.picture = PygView.TRAP
+        self.visible = False              # overwriting default from class Item()
+        self.had_detecting_check = False  # the player has only one chance (per rank) to detect traps
+
+    def detecting_check(self, player):
+        """rolls a die to see if the player is experienced enough to see the trap
+           checks against players intelligence (2/3) and dexterity (1/3)"""
+        d1 = random.gauss(0.5 + player.intelligence * 0.066 + player.dexterity * 0.033, 0.2)
+        # gives something mostly between 0 and 1, centered around 0.5
+        d2 = random.gauss(0.5 + self.level * 0.1, 0.2)
+        if d1 > d2:
+            return True
+        return False
+
+    def damage(self, player):
+        """rolls a die to calculate the damage to the player"""
+        pass
 
 
 class Key(Item):
