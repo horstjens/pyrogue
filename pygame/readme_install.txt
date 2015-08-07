@@ -26,3 +26,7 @@ see http://askubuntu.com/a/406410/76648
 other os:
 see https://bitbucket.org/pygame/pygame/downloads
 
+if you are unable to install pygame for python3:
+install python2 and pygame for python2 (see http://python.org and
+ahttp://pygame.org)
+
