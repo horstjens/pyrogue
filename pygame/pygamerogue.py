@@ -185,6 +185,8 @@ def combat_round(m1, m2, level):
                     level.loot.append(Loot(m2.x, m2.y, "meat"))
         else:
             txt.append("combat: {} is not harmed".format(m2.name))
+    m1.hunger += 1
+    m2.hunger += 1
     return txt
 
 
@@ -269,6 +271,7 @@ class Monster(object):
         self.xp = xp
         self.kills = 0
         self.killdict = {}
+        self.hunger = 0
         self.level = level   # each monster starts with level 1, may progress into higher levels
         self.rank = ""
         if hp == 0:
@@ -376,7 +379,7 @@ class Player(Monster):
         self.z = 0
         self.keys = []
         self.druid_visited = False
-        self.hunger = 0
+        # self.hunger = 0   # already defined in class Monster, because combat makes hungry
         self.mana = 0
         if hp == 0:
             self.hitpoints = random.randint(5, 10)
@@ -873,28 +876,32 @@ class PygView(object):
 
     def paint_map(self):
         self.map = pygame.Surface((self.gui_width, self.gui_height))
-        self.map.fill((20, 20, 20))
+        self.map.fill((20, 20, 20))  # fill with dark grey
+        scrollx = self.gui_width / 2 - self.player.x * self.mapzoom
+        scrolly = self.gui_height / 2 - self.player.y * self.mapzoom
         y = 0
         for line in self.level.lines:
             x = 0
             for char in line:
                 if char == "#":  # wall
-                    pygame.draw.rect(self.map, (150, 150, 150), (x * self.mapzoom, y * self.mapzoom, self.mapzoom,
+                    pygame.draw.rect(self.map, (150, 150, 150), (x * self.mapzoom + scrollx, y * self.mapzoom + scrolly, self.mapzoom,
                                      self.mapzoom))
                 elif char == "<":  # stair up
-                    pygame.draw.rect(self.map, (255, 150, 150), (x * self.mapzoom, y * self.mapzoom, self.mapzoom,
+                    pygame.draw.rect(self.map, (255, 150, 150), (x * self.mapzoom + scrollx, y * self.mapzoom + scrolly, self.mapzoom,
                                      self.mapzoom))
                 elif char == ">":  # stair down
-                    pygame.draw.rect(self.map, (150, 255, 150), (x * self.mapzoom, y * self.mapzoom, self.mapzoom,
+                    pygame.draw.rect(self.map, (150, 255, 150), (x * self.mapzoom + scrollx, y * self.mapzoom + scrolly, self.mapzoom,
                                      self.mapzoom))
                 else:
-                    pygame.draw.rect(self.map, (50, 50, 50),    (x * self.mapzoom, y * self.mapzoom, self.mapzoom,
+                    pygame.draw.rect(self.map, (50, 50, 50),    (x * self.mapzoom + scrollx, y * self.mapzoom + scrolly, self.mapzoom,
                                      self.mapzoom))
                 # player pixel
-                pygame.draw.rect(self.map, (255, 0, 0), (self.player.x * self.mapzoom, self.player.y * self.mapzoom,
+                pygame.draw.rect(self.map, (255, 0, 0), (self.player.x * self.mapzoom + scrollx , self.player.y * self.mapzoom + scrolly,
                                  self.mapzoom, self.mapzoom))
                 x += 1
             y += 1
+
+        #self.screen.blit(self.map, (self.width - self.gui_width + scrollx, 0 + scrolly))
         line = write("zoom = {} press + or -".format(self.mapzoom), (0, 0, 255), 18)
         self.map.blit(line, (0, self.gui_height-12))
 
@@ -954,7 +961,7 @@ class PygView(object):
         pygame.draw.rect(self.screen, (0, 0, 255), (self.width - self.gui_width + 50, y, self.player.mana, 10))
         #  ---- hunger-bar
         y += 15
-        line = write("Hu: {}".format(self.player.hunger), (255, 255, 0), 18)
+        line = write("Hu: {:.0f}".format(self.player.hunger), (255, 255, 0), 18)
         self.screen.blit(line, (self.width - self.gui_width, y))
         pygame.draw.rect(self.screen, (255, 255, 0), (self.width - self.gui_width + 50, y, self.player.hunger, 10))
 
@@ -1025,7 +1032,7 @@ class PygView(object):
                     self.turns += 1
                     if self.player.mana < 32:
                         self.player.mana += 0.1
-                    self.player.hunger += 1
+                    self.player.hunger += 0.25
                     if self.player.hunger > 100:
                         self.player.hitpoints -= 1
                         Flytext(self.player.x, self.player.y, "Hunger: dmg 1")
@@ -1081,7 +1088,7 @@ class PygView(object):
                         food = [i for i in self.player.inventory if i == "bread" or i == "meat"]
                         if len(food) > 0:
                             self.player.inventory[food[0]]-=1
-                            Flytext(self.player.x, self.player.y, "Yummy {}".format(food[0]))
+                            Flytext(self.player.x, self.player.y, "Yummy {}".format(food[0]), (0,200,0))
                             self.player.hunger -= random.randint(5, 30)
                         else:
                             self.status.append("You have nothing edible in your inventory. Fight and find loot!")
