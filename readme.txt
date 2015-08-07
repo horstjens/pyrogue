@@ -1,24 +1,25 @@
 pyrogue
 
-rogue-like dungeon crawlser game made with python.
-This project was originally made during prommaning courses for my students at
+rogue-like dungeon crawler game made with python, because i love
+the free/libre game Dungeon Crawl Stone Soup so much (https://crawl.develz.org/).
+This project was originally made during programming courses for my students at
 http://spielend-programmieren.at. Versions in German language can be found 
 at https://github.com/horstjens/spielend-programmieren/tree/master/pyrogue
 
 This project is the international version in English language.
-Official repository url: https://github.com/horstjens/pyrogue
-
+Official repository url is: https://github.com/horstjens/pyrogue
 
 all source code: GPL 3.0 License,
-see http://www.gnu.org/licenses/gpl-3.0.de.html
+see http://www.gnu.org/licenses/gpl-3.0.de.html or LICENSE
 
-Versions:
-at the moment there exist those versions:
-text .... using python3
-pygame .. using pygame and python3 
+The idea is to make variants with different game engines.
+Currently those versions exist, each version has it's own folder:
+
+text .... using python3 (also works with python2.7)
+pygame .. using pygame and python3 (also works with python2.7)
 
 
-graphics:
+artwork:
 spritesheets are taken from the free / libre open-source game project
 dungeon crawl stone soup, see https://crawl.develz.org/
 the licenses of those spritesheets are, as far as i understand:

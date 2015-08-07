@@ -1,42 +1,57 @@
-generelle Regeln:
+howto design a level
 
+Rules about level design are inspired by Dungeon Crawl Stone Soup.
 
-Jeder Level, auch der erste, braucht eine Treppe nach oben [<]
-Jeder Level muss eine durchgehende Außenmauer [#] haben
-Alle Textlinien eines Levels müssen gleich lang sein (Level muss rechteckig sein)
-Level dürfen unterschiedlich groß sein, aber:
-Eine Treppe in einen höheren oder tieferen Level darf nicht ins "Nichts" führen;
-Die Position der Treppe (x,y) muss im oberen / unteren Level ein gültiges Feld sein;
-Zum Beispiel ein Floor [.] , aber keine Wand [W]
+Levels are made by humans using an text editor.
+The first level is closest to the surface and very easy.
+The deeper levels are harder and become more and more difficult.
+A player enter the next (deeper) level by climbing a stair down.
+A player can escape in the previous (upper) level by climbing a stair up.
 
-Schilder: Pro Level darf es beliebig viele, aber maximal 9 verschiedene 
-Hinweisschilder geben. Sie werden durch zahlen (1-9) im Level gesetzt.
+rules:
+  * each level, also the first one, need at least one stair up [<]
+  * each level must have an outer perimeter of walls [#] without breaks
+  * each level must be a square (each text line need to have the same length)
+  * levels can have different size, but:
+    * a stair up [<] or down [>] must have a corresponding valid field [.] in the next / previous level (same x, y)
 
-Nach der letzten Level-Zeile werden die Hinweistexte für die Schilder geschrieben,
-jeweils beginnend mit der entsprechenden Nummer. Beispiel für einen kleinen Level
-mit 2 verschiedenen Schildern, Schild 1 kommt zwei mal vor:
+warning signs:
+A level designer may place warning signs in his level. Each level can have up to 10 different warning signs.
+( represented by the numbers 0 to 9). Each sign can exist several times, but only 10 different signs are possible
+per level. Meaning you can have the sign "beware of the traps" 20 times in a level, but you can not have an individual
+warning sign text for each of the 20 traps.
+
+warning sign text:
+after the last textline of a level can be placed the text lines for the warning signs. Each text line for warning
+sign text begins with the number [0-9] of the corresponding warning sign.
+
+This is a short example of a valid level (has stair up and is surrunded by wall [#] with 2 different signs [1],[2].
+The first sign is placed two times in the level.
 
 #######
-#.112.#
-#.....#
+#<1 2.#
+#1....#
 #######
-1 Vorsicht Falle 
-2 Dieses Schild ist einzigartig
+1 exit this level with the stair up.
+2 This warning sign is unique.
 
-Erlaubte Zeichen in einem Level:
 
-[.].....Boden / Floor()
-[#].....Wand  / Wall()
-[<].....Stiege hinauf in den höheren Level / zur Oberfläche
-[>].....Stiege hinunter in den tieferen Level
-[M].....Monster (Zufallsbewegung)
-[B].....Boss (verfolgt den Spieler)
-[S].....Statue (kämpft, aber bewegt sich nicht)
-[k].....Schlüssel / key
+legend:
+
+you can use those chars to design your level
+
+[.].....Floor
+[#].....Wall
+[<].....stair up (previous level or surface)
+[>].....stair down (next level)
+[M].....Monster (roams randomly)
+[B].....Boss (hunts the player)
+[S].....Statue (immobile)
+[k].....key (can open door)
 [L].....Loot
-[D].....Türe (Door, verschlossen)
-1-9.....Schilder
-[T].....Falle (trap)
+[D].....Door, closed, need key
+0-9.....warning sign
+[T].....trap
 
   
 

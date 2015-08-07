@@ -387,6 +387,14 @@ class Player(Monster):
         else:
             self.picture = picture
 
+    def detect(self):
+        """rolls a test to detect a hidden trap"""
+        return random.gauss(0.5 + self.intelligence * 0.066 + self.dexterity * 0.033, 0.2)
+
+    def evade(self):
+        """rolls a test for half damage"""
+        return random.gauss(0.5 + self.dexterity * 0.1, 0.2)
+
     def levelup(self, rank="Nobody"):
         self.level += 1
         self.hitpoints += self.level * 2 + random.randint(1, 6)
@@ -483,25 +491,24 @@ class Sign(Item):
 class Trap(Item):
     def __init__(self, x, y):
         Item.__init__(self, x, y)
-        self.level = random.randint(1, 5)
+        self.level = random.randint(1, 6)
         self.hitpoints = self.level * 2
         self.picture = PygView.TRAP
         self.visible = False              # overwriting default from class Item()
-        self.had_detecting_check = False  # the player has only one chance (per rank) to detect traps
+        #self.had_detecting_check = False  # the player has only one chance (per rank) to detect traps
 
-    def detecting_check(self, player):
+    def detect(self):
         """rolls a die to see if the player is experienced enough to see the trap
            checks against players intelligence (2/3) and dexterity (1/3)"""
-        d1 = random.gauss(0.5 + player.intelligence * 0.066 + player.dexterity * 0.033, 0.2)
         # gives something mostly between 0 and 1, centered around 0.5
-        d2 = random.gauss(0.5 + self.level * 0.1, 0.2)
-        if d1 > d2:
-            return True
-        return False
+        return random.gauss(0.5 + self.level * 0.1, 0.2)
 
-    def damage(self, player):
-        """rolls a die to calculate the damage to the player"""
-        pass
+    def damage(self):
+        """rolls one die per level of trap to calculate the damage to the player."""
+        damage = 0
+        for _ in range(self.level):
+            damage += random.randint(1, 6)
+        return damage
 
 
 class Key(Item):
@@ -934,20 +941,20 @@ class PygView(object):
         self.paint_map()
         self.screen.blit(self.map, (self.width - self.gui_width, 0))
         # ---- hp-bar, below minimap:
-        line = write("HP: {}".format(self.player.hitpoints), (0, 255, 0), 20)
+        line = write("HP: {}".format(self.player.hitpoints), (0, 255, 0), 18)
         y = self.gui_height + 5 # the height of the minimap
         self.screen.blit(line, (self.width - self.gui_width, y))
         # pygame.draw.rect(self.screen, (255, 0, 0), (self.width - self.gui_width, y, self.gui_width, 10))  # red
         # green hp bar
         pygame.draw.rect(self.screen, (0, 255, 0), (self.width - self.gui_width + 50, y, self.player.hitpoints, 10))
         #  ---- mana-bar
-        y += 20
-        line = write("MP: {:.0f}".format(self.player.mana), (0, 0, 255), 20)
+        y += 15
+        line = write("MP: {:.0f}".format(self.player.mana), (0, 0, 255), 18)
         self.screen.blit(line, (self.width - self.gui_width, y))
         pygame.draw.rect(self.screen, (0, 0, 255), (self.width - self.gui_width + 50, y, self.player.mana, 10))
         #  ---- hunger-bar
-        y += 20
-        line = write("Hu: {}".format(self.player.hunger), (255, 255, 0), 20)
+        y += 15
+        line = write("Hu: {}".format(self.player.hunger), (255, 255, 0), 18)
         self.screen.blit(line, (self.width - self.gui_width, y))
         pygame.draw.rect(self.screen, (255, 255, 0), (self.width - self.gui_width + 50, y, self.player.hunger, 10))
 
@@ -1078,7 +1085,7 @@ class PygView(object):
                             self.player.hunger -= random.randint(5, 30)
                         else:
                             self.status.append("You have nothing edible in your inventory. Fight and find loot!")
-                    # --------------- new location ----------
+                    # --------------- player goes to a new location ----------
                     # whereto: Block (Floor, Wall, Stair)
                     whereto = self.level.layout[(self.player.x+self.player.dx, self.player.y+self.player.dy)]
                     monster = self.level.is_monster(self.player.x+self.player.dx, self.player.y+self.player.dy)
@@ -1102,13 +1109,14 @@ class PygView(object):
                             self.status.append("{}: door unlocked! 1 key used up)".format(self.turns))
                         else:
                             self.player.dx, self.player.dy = 0,0
-                            self.status.append("{}: Ouch! You bumb into a door".format(self.turns))
+                            self.status.append("{}: Ouch! You bump into a door".format(self.turns))
                             self.player.hitpoints -= 1
                             Flytext(self.player.x, self.player.y, "Ouch! Dmg: 1 hp")
                     # ----------------- Finally the player is arrived at a new position --------
                     self.player.x += self.player.dx
                     self.player.y += self.player.dy
-                    where = self.level.layout[(self.player.x, self.player.y)]               # where am i now
+                    # --------------- player is at a new location ----------
+                    where = self.level.layout[(self.player.x, self.player.y)]
                     # ------------- special Story -------------------
                     #      ---- Story 1: visit the druids
                     if self.player.x == 5 and self.player.y == 5 and self.player.z == 0 and not self.player.druid_visited:
@@ -1155,15 +1163,31 @@ class PygView(object):
                         else:
                             self.status.append("{}: stair up: press [<] to climb up".format(self.turns))
                     # --------- is there a trap ? --------------
-                    for trap in self.level.traps:
-                        if trap.x == self.player.x and trap.y == self.player.y:
-                            damage = random.randint(1, 4)
-                            self.status.append("{}: Ouch, that hurts! A trap, {} damage!".format(self.turns, damage))
-                            self.player.hitpoints -= damage
-                            Flytext(self.player.x, self.player.y, "A trap! Dmg: {}".format(damage))
-                            if random.random() < 0.5:             # 50% Chance # Falle verschwunden?
-                                self.status.append("{}: trap destroyed!".format(self.turns))
-                                trap.hitpoints = 0
+                    # ---- detect traps around player
+                    dirs = [(-1,-1), (-1,0), (-1,1), (0,-1),(0,1),(1,-1),(1,0),(1,1)]
+                    for (dx, dy) in dirs:
+                        traps = [t for t in self.level.traps if t.x == self.player.x + dx and t.y == self.player.y + dy
+                             and not t.visible]
+                        for t in traps:
+                            if self.player.detect() > t.detect():
+                                t.visible = True
+                                self.status.append("Trap spotted")
+                    # ---------- player is inside a trap ? ---------------------------
+                    traps = [t for t in self.level.traps if t.x == self.player.x and t.y == self.player.y]
+                    for t in traps:
+                        damage = t.damage()
+                        # player can roll an evade check (dexterity) against trap detect check for half damage
+                        self.status.append("You step into a trap!")
+                        if self.player.evade() > t.detect():
+                            damage *= 0.5
+                            damage = round(damage, 0)
+                            self.status.append("Your high dexterity allows you to take only half the damage")
+                        self.status.append("The trap is hurting you for {} damage!".format(self.turns, damage))
+                        self.player.hitpoints -= damage
+                        Flytext(self.player.x, self.player.y, "A trap! Dmg: {}".format(damage))
+                        t.hitpoints -= random.randint(0, 4)  # damage to trap
+                        if t.hitpoints < 1:
+                            self.status.append("{}: trap destroyed!".format(self.turns))
                     # --------- is there a key ? -------------
                     for key in self.level.keys:
                         if key.x == self.player.x and key.y == self.player.y:
@@ -1244,5 +1268,5 @@ class PygView(object):
 if __name__ == '__main__':
     # add your own level files here. use os.path.join() for other folders
     level_sourcefilenames = ["level1demo.txt", "level2demo.txt"]
-    # 1600 x 1000 pixel, Player start at x=1, y=1, in level 0 (the first level) with 0 xp, has level 1 and 50 hit points
+    # 800 x 600 pixel, Player start at x=1, y=1, in level 0 (the first level) with 0 xp, has level 1 and 50 hit points
     PygView(level_sourcefilenames, 800, 600, 1, 1, 0, 1, 50).run()
