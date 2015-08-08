@@ -18,6 +18,11 @@ and sound and graphics from battle of Wesnoth. please see readme.txt for license
 details. 
 """
 
+
+
+
+
+
 import pygame
 import random
 import os
@@ -28,18 +33,18 @@ def re_roll(sides=6, number=1):
     """roll 'number' of die and re-roll if the highest side was rolled
        a six sided dice if rolling a 6 count as 5 and can roll again
        this makes possible very high numbers with a very low chance"""
-    sum = 0
+    dsum = 0  # sum is already a python keyword
     for _ in range(number):
         while True:
             roll = random.randint(1, sides)
             if roll < sides:
-                sum += roll
+                dsum += roll
                 break
-            sum += roll-1
-    return sum
+            dsum += roll-1
+    return dsum
 
 
-def write(msg="pygame is cool", fontcolor=(255,0,255), fontsize=42, font=None):
+def write(msg="pygame is cool", fontcolor=(255, 0, 255), fontsize=42, font=None):
     """returns pygame surface with text"""
     myfont = pygame.font.SysFont(font, fontsize)
     mytext = myfont.render(msg, True, fontcolor)
@@ -74,8 +79,7 @@ def ask(question, screen,  image=None, x=-1, y=-1, center=True,  imagex=0, image
                     continue
                 return text
             elif event.key == pygame.K_ESCAPE:
-                continue
-                #return "Dorftrottel"
+                continue  # return "village idiot"
             elif event.key <= 127:
                 text += chr(event.key)
         line = write(question + ": " + text)
@@ -104,8 +108,8 @@ def display_textlines(lines, screen, color=(0, 0, 255), image=None, center=True,
                                     PygView.height // 2 - image.get_rect().height // 2))
         y = 0
         for textline in lines:
-            line = write(textline, color, 24 )
-            screen.blit(line,(20, offset + 14 * y ))
+            line = write(textline, color, 24)
+            screen.blit(line, (20, offset + 14 * y))
             y += 1
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -163,7 +167,7 @@ def combat_round(m1, m2, level):
             fly_dy = -50
         Flytext(m2.x, m2.y, "dmg: {}".format(damage), dx=fly_dx, dy=fly_dy)  # Text fly's away from opponent
         if blocked_damage > 0:
-            Flytext(m2.x, m2.y+1, "blocked: {}".format(blocked_damage), (0,255,0), dx=fly_dx)
+            Flytext(m2.x, m2.y+1, "blocked: {}".format(blocked_damage), (0, 255, 0), dx=fly_dx)
         if damage > 0:
             m2.hitpoints -= damage
             txt.append("combat: {} looses {} hitpoints ({} hp left)".format(m2.name, damage, m2.hitpoints))
@@ -181,7 +185,7 @@ def combat_round(m1, m2, level):
                 line = m1.check_levelup()
                 if line:
                     txt.append(line)
-                if random.random() < 0.25:    # 25% Chance to drop edibles
+                if random.random() < 0.5:    # 50% Chance to drop edibles
                     level.loot.append(Loot(m2.x, m2.y, "meat"))
         else:
             txt.append("combat: {} is not harmed".format(m2.name))
@@ -252,7 +256,7 @@ class Spritesheet(object):
         return image
 
     # Load a whole bunch of images and return them as a list
-    def images_at(self, rects, colorkey = None):
+    def images_at(self, rects, colorkey=None):
         """Loads multiple images, supply a list of coordinates"""
         return [self.image_at(rect, colorkey) for rect in rects]
 
@@ -291,7 +295,7 @@ class Monster(object):
             if random.random() < 0.1:  # each Item has a 10% Chance 
                 self.inventory[z] = 1
 
-    def check_levelup(self, rank="nobody"):
+    def check_levelup(self):
         return ""
 
     def ai(self, player):
@@ -332,10 +336,10 @@ class Goblin(Monster):
         """example of a weak monster"""
         Monster.__init__(self, x, y, xp, level, hp, picture)
         # ------- put your own code here: ----
-        #self.picture = random.choice((PygView.GOBLIN1, PygView.GOBLIN2, PygView.GOBLIN3))
+        # self.picture = random.choice((PygView.GOBLIN1, PygView.GOBLIN2, PygView.GOBLIN3))
         # self.strength = random.randint(1,6)
         # -- give something into inventory
-        #self.inventory["goblin amulet"] = 1
+        # self.inventory["goblin amulet"] = 1
 
 
 class Wolf(Monster):
@@ -391,31 +395,35 @@ class Player(Monster):
             self.picture = picture
 
     def detect(self):
-        """rolls a test to detect a hidden trap"""
+        """rolls a test to detect a hidden trap, with bonus for intelligence (2/3) and dexterity (1/3)"""
         return random.gauss(0.5 + self.intelligence * 0.066 + self.dexterity * 0.033, 0.2)
 
     def evade(self):
-        """rolls a test for half damage"""
+        """rolls a test for half damage, with bonus for high dexterity"""
         return random.gauss(0.5 + self.dexterity * 0.1, 0.2)
 
-    def levelup(self, rank="Nobody"):
+    def levelup(self, new_rank="Nobody"):
         self.level += 1
         self.hitpoints += self.level * 2 + random.randint(1, 6)
-        self.rank = rank
+        self.rank = new_rank
+        improve = random.choice(("strength", "dexterity", "intelligence"))
+        self.__setattr__(improve, self.__getattribute__(improve)+1)  # +=1 for selected attribute
+        Flytext(self.x, self.y, "LevelUp: +1 {}".format(improve), (0, 0, 255))
+        # TODO: level-up sound effect
 
     def check_levelup(self):
-        if self.xp >= 100 and self.level == 1:
-            self.levelup("page")  # level wird 2
-        elif self.xp >= 200 and self.level == 2:
+        if self.xp >= 15 and self.level == 1:
+            self.levelup("page")  # level += 1
+        elif self.xp >= 30 and self.level == 2:
             self.levelup("squire")
-        elif self.xp >= 400 and self.level == 3:
+        elif self.xp >= 60 and self.level == 3:
             self.levelup("knight")
         else:
             return ""  # add your own code here
         return "{} gains Level {}: {}".format(self.name, self.level, self.rank)
 
-    def ai(self):
-        return (0, 0)
+    def ai(self, player=None):
+        return 0, 0
 
     def show_inventory(self):
         """show inventory, return lines of text"""
@@ -435,6 +443,7 @@ class Player(Monster):
             self.inventory[item] += 1
         else:
             self.inventory[item] = 1
+        self.xp += 1  # TODO: got item sound effect
         
         
 class Block(object):
@@ -467,7 +476,7 @@ class Stair(Block):
             self.picture.blit(PygView.FLOOR, (0, 0))  # blit stairup over the picture of floor, for better looks
             self.picture.blit(PygView.STAIRUP, (0, 0))
             self.picture.convert_alpha()
-        self.target = (0, 0, 0) # x,y,z
+        self.target = (0, 0, 0)  # x,y,z
 
 
 class Item(object):
@@ -497,8 +506,8 @@ class Trap(Item):
         self.level = random.randint(1, 6)
         self.hitpoints = self.level * 2
         self.picture = PygView.TRAP
-        self.visible = False              # overwriting default from class Item()
-        #self.had_detecting_check = False  # the player has only one chance (per rank) to detect traps
+        self.visible = False                # overwriting default from class Item()
+        # self.had_detecting_check = False  # the player has only one chance (per rank) to detect traps
 
     def detect(self):
         """rolls a die to see if the player is experienced enough to see the trap
@@ -633,7 +642,7 @@ class Level(object):
         """load level file names (comma separated) from disk,
            display errors and return list of error free Level() objects"""
         # args are the level names, like "level1.txt". Use os.path.join() to access a file in a specific folder
-        levels = []
+        good_levels = []
         for name in list_of_levelsourcefilenames:
             good_lines = False
             try:
@@ -644,15 +653,16 @@ class Level(object):
                 print("sadly, there were errors while loading level(s):")
                 print(e)
             if good_lines:
-                levels.append(Level(good_lines, warning_signs))
-        fails = len(list_of_levelsourcefilenames) - len(levels)
-        print("{} level(s) were successfully added to the game".format(len(levels)))
-        if len(levels) < 1:
+                # levels.append(Level(good_lines, warning_signs))
+                good_levels.append((good_lines, warning_signs))
+        fails = len(list_of_levelsourcefilenames) - len(good_levels)
+        print("{} level(s) were successfully added to the game".format(len(good_levels)))
+        if len(good_levels) < 1:
             sys.exit("no levels loaded - game can not start")
         elif fails > 0:
             print("{} level(s) were not loaded because of errors".format(fails))
             input("press [Enter] to start the game anyway")
-        return levels
+        return good_levels
 
     def __init__(self, lines, signsdict):
         """create a new Level object, prepared from check_level"""
@@ -667,8 +677,6 @@ class Level(object):
         self.keys = []
         self.width = 0
         self.depth = 0
-        #self.sichtweite = 10
-        #with open(dateiname) as f:
         y = 0
         for line in self.lines:
             x = 0
@@ -724,8 +732,8 @@ class Level(object):
                 return monster
         return False
 
-## this sprite class was not useable because Monsters were created to soon, by Level.__init__, causing problems
-#class Healthbar(pygame.sprite.Sprite):
+# this sprite class was not useable because Monsters were created to soon, by Level.__init__, causing problems
+# class Healthbar(pygame.sprite.Sprite):
 #    def __init__(self, boss):
 #        """a healthbar hovering over a monster"""
 #        self._layer = 6
@@ -748,7 +756,7 @@ class Level(object):
 
 class Flytext(pygame.sprite.Sprite):
     def __init__(self, x, y, text="hallo", rgb=(255, 0, 0), blockxy = True,
-                  dx=0, dy=-50, duration=2, acceleration_factor = 0.96 ):
+                 dx=0, dy=-50, duration=2, acceleration_factor = 0.96):
         """a text flying upward and for a short time and disappearing"""
         self._layer = 7  # order of sprite layers (before / behind other sprites)
         pygame.sprite.Sprite.__init__(self, self.groups)  # THIS LINE IS IMPORTANT !!
@@ -762,7 +770,7 @@ class Flytext(pygame.sprite.Sprite):
             self.x, self.y = x, y
         self.duration = duration  # duration of flight in seconds
         self.acc = acceleration_factor  # if < 1, Text moves slower. if > 1, text moves faster. 
-        self.image = write(self.text, (self.r, self.g, self.b), 22) # font 22
+        self.image = write(self.text, (self.r, self.g, self.b), 22)  # font 22
         self.rect = self.image.get_rect()
         self.rect.center = (self.x, self.y)
         self.time = 0
@@ -782,12 +790,12 @@ class PygView(object):
     scrollx = 0  # class variables, can be read from everywhere
     scrolly = 0
 
-    def __init__(self, level_sourcefilenames, width=640, height=400, x=1, y=1, xp=0, level=1, hp=50, fullscreen=False):
+    def __init__(self, checked_list_of_levels, width=640, height=400, x=1, y=1, xp=0, level=1, hp=50, fullscreen=False):
         if fullscreen:
             winstyle = pygame.FULLSCREEN
         else:
             winstyle = 0
-        pygame.mixer.pre_init(44100, -16, 2, 2048)  # setup mixer to avoid sound lag
+        # pygame.mixer.pre_init(44100, -16, 2, 2048)  # setup mixer to avoid sound lag
         pygame.init()
         # ----------- pictureschirm einrichten --------
         PygView.width = width   #
@@ -800,6 +808,7 @@ class PygView(object):
         pygame.display.set_caption("Press ESC to quit")
         self.gui_height = 100  # height in pixel of bottom gui area
         self.gui_width = 150   # width in pixel of right side gui area
+        self.map = pygame.Surface((self.gui_width, self.gui_height))
         self.mapzoom = 3
         # ------- load Resources as class attirbutes (global access) 
         # ----- all pictures are in folder "images" ---------
@@ -834,7 +843,9 @@ class PygView(object):
         # ---- ask player to enter his name --------
         self.player.name = ask("Your name [Enter]? >>", self.screen, PygView.DRUID)
         self.player.name = self.player.name[0].upper() + self.player.name[1:].lower()
-        self.levels = Level.check_levels(level_sourcefilenames)  # checked by Level.check_levels()
+        self.levels = []
+        for lines, signs in checked_list_of_levels:     # checked by Level.check_levels()
+            self.levels.append(Level(lines, signs))
         self.status = [""]
         self.level = self.levels[0]
         self.seconds = 0
@@ -875,7 +886,6 @@ class PygView(object):
         self.hilftextlines.append("- - - - - - - - - - - - - - - - - - - - - - - - - - - -")
 
     def paint_map(self):
-        self.map = pygame.Surface((self.gui_width, self.gui_height))
         self.map.fill((20, 20, 20))  # fill with dark grey
         scrollx = self.gui_width / 2 - self.player.x * self.mapzoom
         scrolly = self.gui_height / 2 - self.player.y * self.mapzoom
@@ -884,20 +894,20 @@ class PygView(object):
             x = 0
             for char in line:
                 if char == "#":  # wall
-                    pygame.draw.rect(self.map, (150, 150, 150), (x * self.mapzoom + scrollx, y * self.mapzoom + scrolly, self.mapzoom,
-                                     self.mapzoom))
+                    pygame.draw.rect(self.map, (150, 150, 150), (x * self.mapzoom + scrollx, y * self.mapzoom + scrolly,
+                                     self.mapzoom, self.mapzoom))
                 elif char == "<":  # stair up
-                    pygame.draw.rect(self.map, (255, 150, 150), (x * self.mapzoom + scrollx, y * self.mapzoom + scrolly, self.mapzoom,
-                                     self.mapzoom))
+                    pygame.draw.rect(self.map, (255, 150, 150), (x * self.mapzoom + scrollx, y * self.mapzoom + scrolly,
+                                     self.mapzoom, self.mapzoom))
                 elif char == ">":  # stair down
-                    pygame.draw.rect(self.map, (150, 255, 150), (x * self.mapzoom + scrollx, y * self.mapzoom + scrolly, self.mapzoom,
-                                     self.mapzoom))
+                    pygame.draw.rect(self.map, (150, 255, 150), (x * self.mapzoom + scrollx, y * self.mapzoom + scrolly,
+                                     self.mapzoom, self.mapzoom))
                 else:
-                    pygame.draw.rect(self.map, (50, 50, 50),    (x * self.mapzoom + scrollx, y * self.mapzoom + scrolly, self.mapzoom,
-                                     self.mapzoom))
+                    pygame.draw.rect(self.map, (50, 50, 50),    (x * self.mapzoom + scrollx, y * self.mapzoom + scrolly,
+                                     self.mapzoom, self.mapzoom))
                 # player pixel
-                pygame.draw.rect(self.map, (255, 0, 0), (self.player.x * self.mapzoom + scrollx , self.player.y * self.mapzoom + scrolly,
-                                 self.mapzoom, self.mapzoom))
+                pygame.draw.rect(self.map, (255, 0, 0), (self.player.x * self.mapzoom + scrollx,
+                                 self.player.y * self.mapzoom + scrolly, self.mapzoom, self.mapzoom))
                 x += 1
             y += 1
 
@@ -949,7 +959,7 @@ class PygView(object):
         self.screen.blit(self.map, (self.width - self.gui_width, 0))
         # ---- hp-bar, below minimap:
         line = write("HP: {}".format(self.player.hitpoints), (0, 255, 0), 18)
-        y = self.gui_height + 5 # the height of the minimap
+        y = self.gui_height + 5  # the height of the minimap
         self.screen.blit(line, (self.width - self.gui_width, y))
         # pygame.draw.rect(self.screen, (255, 0, 0), (self.width - self.gui_width, y, self.gui_width, 10))  # red
         # green hp bar
@@ -964,8 +974,6 @@ class PygView(object):
         line = write("Hu: {:.0f}".format(self.player.hunger), (255, 255, 0), 18)
         self.screen.blit(line, (self.width - self.gui_width, y))
         pygame.draw.rect(self.screen, (255, 255, 0), (self.width - self.gui_width + 50, y, self.player.hunger, 10))
-
-
         # ---- bottom area GUI
         # ---- clean text are by painting it black ---
         pygame.draw.rect(self.screen, (0, 0, 0), (0, self.height - self.gui_height, self.width, self.gui_height))
@@ -1055,9 +1063,9 @@ class PygView(object):
                     elif event.key == pygame.K_LESS or event.key == pygame.K_GREATER:     # < or > 
                         if type(where).__name__ == "Stair":
                             if not where.down and self.player.z == 0:
-                                lines=["Game OVer",
-                                       "you leave the dungeon and return to the surface..",
-                                       "...alive!"]
+                                lines = ["Game OVer",
+                                         "you leave the dungeon and return to the surface..",
+                                         "...alive!"]
                                 display_textlines(lines, self.screen, (255, 255, 255))
                                 running = False
                                 break
@@ -1073,23 +1081,26 @@ class PygView(object):
                                                self.turns))
                             break
                     elif event.key == pygame.K_q:       # -----(q)uaff potion --------- healing potion ------------
-                            if "healing potion" in self.player.inventory and self.player.inventory["healing potion"] >0:
+                            if ("healing potion" in self.player.inventory and
+                                    self.player.inventory["healing potion"] > 0):
                                 self.player.inventory["healing potion"] -= 1
                                 effect = random.randint(2, 5)
                                 self.player.hitpoints += effect
                                 self.status.append("{}: You drink the healing potion und gain {} hitpoints".format(
                                                    self.turns, effect))
-                                Flytext(self.player.x, self.player.y,"gulp, gulp, gulp: +{} hp".format(effect),
+                                Flytext(self.player.x, self.player.y, "gulp, gulp, gulp: +{} hp".format(effect),
                                         (0, 0, 255))
                             else:
                                 self.status.append("{}: You have no healing potion. Gather more loot!".format(
                                                    self.turns))
                     elif event.key == pygame.K_e:
-                        food = [i for i in self.player.inventory if i == "bread" or i == "meat"]
+                        food = [i for i in self.player.inventory if i == "bread" or i == "meat" and
+                                self.player.inventory[i] > 0]
                         if len(food) > 0:
-                            self.player.inventory[food[0]]-=1
+                            self.player.inventory[food[0]] -= 1
                             Flytext(self.player.x, self.player.y, "Yummy {}".format(food[0]), (0,200,0))
                             self.player.hunger -= random.randint(5, 30)
+                            self.player.hunger = max(0, self.player.hunger) # hunger can not become < 0
                         else:
                             self.status.append("You have nothing edible in your inventory. Fight and find loot!")
                     # --------------- player goes to a new location ----------
@@ -1106,7 +1117,7 @@ class PygView(object):
                         self.status.append("{}: Please don't run into walls!".format(self.turns))
                         self.player.hitpoints -= 1
                         Flytext(self.player.x, self.player.y, "Ouch! Dmg: 1 hp")
-                        self.player.dx, self.player.dy = 0,0
+                        self.player.dx, self.player.dy = 0, 0
                     # ----- testing if player runs into door
                     for door in [d for d in self.level.doors if d.x == self.player.x+self.player.dx and
                                  d.y == self.player.y + self.player.dy and d.closed]:
@@ -1115,7 +1126,7 @@ class PygView(object):
                             door.closed = False  # unlocked !
                             self.status.append("{}: door unlocked! 1 key used up)".format(self.turns))
                         else:
-                            self.player.dx, self.player.dy = 0,0
+                            self.player.dx, self.player.dy = 0, 0
                             self.status.append("{}: Ouch! You bump into a door".format(self.turns))
                             self.player.hitpoints -= 1
                             Flytext(self.player.x, self.player.y, "Ouch! Dmg: 1 hp")
@@ -1124,8 +1135,9 @@ class PygView(object):
                     self.player.y += self.player.dy
                     # --------------- player is at a new location ----------
                     where = self.level.layout[(self.player.x, self.player.y)]
-                    # ------------- special Story -------------------
-                    #      ---- Story 1: visit the druids
+                    # --------------------------- Story Missions ---------------------
+                    # ----------------------------------------------------------------
+                    # --------- Story 1: visit the druids ---------------
                     if self.player.x == 5 and self.player.y == 5 and self.player.z == 0 and not self.player.druid_visited:
                         # at position x5, y5 in first level (z0)
                         lines = ["I welcome you, wandering hero!",
@@ -1135,7 +1147,7 @@ class PygView(object):
                                  "Slay them all!"]
                         display_textlines(lines, self.screen, (0, 255, 255), PygView.DRUID)
                         self.player.druid_visited = True
-                    #      ----- Story 2:  all monsters killed, druid mission complete
+                    # ------------- Story 2:  all monsters killed, druid mission complete ---------
                     if self.mo2 == 0 and self.player.druid_visited:
                         lines = ["Congratulation, o hero",
                                  "You have liberated us druids",
@@ -1145,7 +1157,7 @@ class PygView(object):
                         self.player.inventory["reward: half a kingdom"] = 1
                         self.player.inventory["reward: friendship of the druids"] = 1
                         running = False
-                    #    ------- Story 3: Player destroys statue and goes to oosition of statue (18,14) in level2 (z=1)
+                    # ---------- Story 3: Player destroys statue and goes to oosition of statue (18,14) in level2 (z=1)
                     if self.player.z == 1 and self.player.x == 14 and self.player.y == 18:
                         # if player can reach this place he defeated the statue
                         Flytext(self.player.x, self.player.y, "uh-oh...what happens now?", (255, 255, 255))
@@ -1171,10 +1183,10 @@ class PygView(object):
                             self.status.append("{}: stair up: press [<] to climb up".format(self.turns))
                     # --------- is there a trap ? --------------
                     # ---- detect traps around player
-                    dirs = [(-1,-1), (-1,0), (-1,1), (0,-1),(0,1),(1,-1),(1,0),(1,1)]
+                    dirs = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
                     for (dx, dy) in dirs:
                         traps = [t for t in self.level.traps if t.x == self.player.x + dx and t.y == self.player.y + dy
-                             and not t.visible]
+                                 and not t.visible]
                         for t in traps:
                             if self.player.detect() > t.detect():
                                 t.visible = True
@@ -1238,7 +1250,7 @@ class PygView(object):
             # if pygame.K_x in pressedkeys:
             #      print("x key is pressed")
             # ------------ redraw screen, blit the sprites --------------
-            pygame.display.set_caption("  press Esc to quit. Fps: %.2f (%i x %i)"%(
+            pygame.display.set_caption("  press Esc to quit. Fps: %.2f (%i x %i)" % (
                                        self.clock.get_fps(), self.width, self.height))
             self.paint() # paint this level
             #  ------- draw the sprites ------
@@ -1263,7 +1275,7 @@ class PygView(object):
         lines.append("------------ You killed: ------------")
         for v in self.player.killdict:
             lines.append("{} {}".format(self.player.killdict[v], v))
-        display_textlines(lines, self.screen,  (255,255,255), PygView.GAMEOVER)
+        display_textlines(lines, self.screen,  (255, 255, 255), PygView.GAMEOVER)
         # ------------ game over -----------------
         pygame.mixer.music.stop()
         for line in lines:
@@ -1274,6 +1286,7 @@ class PygView(object):
 
 if __name__ == '__main__':
     # add your own level files here. use os.path.join() for other folders
-    level_sourcefilenames = ["level1demo.txt", "level2demo.txt"]
+    sourcefilenames = ["level1demo.txt", "level2demo.txt"]
+    levels = Level.check_levels(sourcefilenames)         # testing level for design errors
     # 800 x 600 pixel, Player start at x=1, y=1, in level 0 (the first level) with 0 xp, has level 1 and 50 hit points
-    PygView(level_sourcefilenames, 800, 600, 1, 1, 0, 1, 50).run()
+    PygView(levels, 800, 600, 1, 1, 0, 1, 50).run()
