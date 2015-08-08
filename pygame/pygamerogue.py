@@ -1,27 +1,22 @@
 #!/usr/bin/env python
-# -*- cothing: utf-8 -*-                # nur wichtig für python version2
-from __future__ import print_function  # nur wichtig für python version2
-from __future__ import division        # nur wichtig für python version2
-try:                                   # nur wichtig für python version2
-    input = raw_input                  # nur wichtig für python version2
-except NameError:                      # nur wichtig für python version2
-    pass                               # nur wichtig für python version2
+# -*- coding: utf-8 -*-               # only necessary for python version2
+from __future__ import print_function  # only necessary for python version2
+from __future__ import division        # only necessary for python version2
+try:                                   # only necessary for python version2
+    input = raw_input                  # only necessary for python version2
+except NameError:                      # only necessary for python version2
+    pass                               # only necessary for python version2
 
 """
-name: pygamerogue
-URL: https://github.com/horstjens/spielend-programmieren/tree/master/pyrogue
-Author:  Horst JENS
-Email: horstjens@gmail.com
-Licence: gpl, see http://www.gnu.org/licenses/gpl.html
-descr: a rogue game using python + pygame. graphics from dungeon crawl stone soup
-and sound and graphics from battle of Wesnoth. please see readme.txt for license
-details. 
+name:        pygamerogue
+URL:         https://github.com/horstjens/pyrogue
+Author:      Horst JENS
+Email:       horstjens@gmail.com
+Licence:     gpl, see http://www.gnu.org/licenses/gpl.html
+Description: a rogue game using python + pygame. graphics from dungeon crawl stone soup
+             and sound and graphics from battle of Wesnoth. please see readme.txt and
+             LICENSE for license details.
 """
-
-
-
-
-
 
 import pygame
 import random
@@ -45,7 +40,7 @@ def re_roll(sides=6, number=1):
 
 
 def write(msg="pygame is cool", fontcolor=(255, 0, 255), fontsize=42, font=None):
-    """returns pygame surface with text"""
+    """returns pygame surface with text. You still need to blit the surface."""
     myfont = pygame.font.SysFont(font, fontsize)
     mytext = myfont.render(msg, True, fontcolor)
     mytext = mytext.convert_alpha()
@@ -126,71 +121,73 @@ def display_textlines(lines, screen, color=(0, 0, 255), image=None, center=True,
         pygame.display.flip()
 
 
-def combat_round(m1, m2, level):
+def combat_round(attacker, defender, level):
     """simulates one attack in a combat between monsters/player. Weapon and armor in the if/elif block 
        should be ordered by best effect to smallest effect.
        returns lines of text"""
     txt = []
-    if m1.hitpoints > 0 and m2.hitpoints > 0:
+    if attacker.hitpoints > 0 and defender.hitpoints > 0:
         PygView.macesound.play()
-        txt.append("combat: {} ({}, {} hp) swings at {} ({}, {} hp)".format(m1.name, type(m1).__name__, m1.hitpoints,
-                   m2.name, type(m2).__name__, m2.hitpoints))
-        damage = m1.level
-        if "sword" in m1.inventory and m1.inventory["sword"] > 0:
+        txt.append("combat: {} ({}, {} hp) swings at {} ({}, {} hp)".format(attacker.name, type(attacker).__name__,
+                   attacker.hitpoints, defender.name, type(defender).__name__, defender.hitpoints))
+        damage = attacker.level
+        if "sword" in attacker.inventory and attacker.inventory["sword"] > 0:
             damage = random.randint(damage, damage+3)
             weapon = "sword"
-        elif "knife" in m1.inventory and m1.inventory["knife"] > 0:
+        elif "knife" in attacker.inventory and attacker.inventory["knife"] > 0:
             damage = random.randint(damage+1, damage+2)
             weapon = "knife"
         else:
             damage = random.randint(damage, damage+1)
             weapon = "fist"
         txt.append("combat: {} attacks {} with {} for {} damage".format(
-            m1.name, m2.name, weapon, damage))
+            attacker.name, defender.name, weapon, damage))
         blocked_damage = 0
-        if "armor" in m2.inventory:
+        if "armor" in defender.inventory:
             damage -= damage+1
             blocked_damage += 1
-            txt.append("combat: armor of {} absorbs one point of damage".format(m2.name))
-        if "shield" in m2.inventory:
+            txt.append("combat: armor of {} absorbs one point of damage".format(defender.name))
+        if "shield" in defender.inventory:
             damage -= (damage-1)+1
             blocked_damage += 1
-            txt.append("combat: shield of {} absorbs one point of damage".format(m2.name))
+            txt.append("combat: shield of {} absorbs one point of damage".format(defender.name))
         fly_dx, fly_dy = 0, -30
-        if m2.x > m1.x:
+        if defender.x > attacker.x:
             fly_dx = 50
-        elif m2.x < m1.x:
+        elif defender.x < attacker.x:
             fly_dx = -50
-        if m2.y > m1.y:
+        if defender.y > attacker.y:
             fly_dy = 50
-        elif m2.y < m1.y:
+        elif defender.y < attacker.y:
             fly_dy = -50
-        Flytext(m2.x, m2.y, "dmg: {}".format(damage), dx=fly_dx, dy=fly_dy)  # Text fly's away from opponent
+        Flytext(defender.x, defender.y, "dmg: {}".format(damage), dx=fly_dx, dy=fly_dy)  # Text fly's away from opponent
         if blocked_damage > 0:
-            Flytext(m2.x, m2.y+1, "blocked: {}".format(blocked_damage), (0, 255, 0), dx=fly_dx)
+            Flytext(defender.x, defender.y+1, "blocked: {}".format(blocked_damage), (0, 255, 0), dx=fly_dx)
         if damage > 0:
-            m2.hitpoints -= damage
-            txt.append("combat: {} looses {} hitpoints ({} hp left)".format(m2.name, damage, m2.hitpoints))
-            if m2.hitpoints < 1:
-                # ---------- m2 is dead  ----------------
+            defender.hitpoints -= damage
+            defender.damaged = True
+            txt.append("combat: {} looses {} hitpoints ({} hp left)".format(defender.name, damage, defender.hitpoints))
+            if defender.hitpoints < 1:
+                # ---------- defender is dead  ----------------
                 exp = random.randint(7, 10)
-                m1.xp += exp
-                m1.kills += 1
-                victim = type(m2).__name__    
-                if victim in m1.killdict:
-                    m1.killdict[victim] += 1
+                attacker.xp += exp
+                attacker.kills += 1
+                victim = type(defender).__name__
+                if victim in attacker.killdict:
+                    attacker.killdict[victim] += 1
                 else:
-                    m1.killdict[victim] = 1
-                txt.append("combat: {} has no hit points left, {} gains {} Xp".format(m2.name, m1.name, exp))
-                line = m1.check_levelup()
+                    attacker.killdict[victim] = 1
+                txt.append("combat: {} has {} hp left, {} gains {} Xp".format(defender.name, defender.hitpoints,
+                           attacker.name, exp))
+                line = attacker.check_levelup()
                 if line:
                     txt.append(line)
                 if random.random() < 0.5:    # 50% Chance to drop edibles
-                    level.loot.append(Loot(m2.x, m2.y, "meat"))
+                    level.loot.append(Loot(defender.x, defender.y, "meat"))
         else:
-            txt.append("combat: {} is not harmed".format(m2.name))
-    m1.hunger += 1
-    m2.hunger += 1
+            txt.append("combat: {} is not harmed".format(defender.name))
+    attacker.hunger += 1
+    defender.hunger += 1
     return txt
 
 
@@ -278,10 +275,12 @@ class Monster(object):
         self.hunger = 0
         self.level = level   # each monster starts with level 1, may progress into higher levels
         self.rank = ""
+        self.damaged = False  # to calculate the full hitpoints. each monster start at full health
         if hp == 0:
             self.hitpoints = random.randint(10, 20)
         else:
             self.hitpoints = hp
+        self.hpmax = self.hitpoints  # maximum amount of hitpoints, will be auto-generated
         if picture == "":
             self.picture = PygView.MONSTERPICTURE
         else:
@@ -389,6 +388,7 @@ class Player(Monster):
             self.hitpoints = random.randint(5, 10)
         else:
             self.hitpoints = hp
+        self.hpmax = self.hitpoints
         if picture == "":
             self.picture = PygView.PLAYERPICTURE
         else:
@@ -409,6 +409,9 @@ class Player(Monster):
         improve = random.choice(("strength", "dexterity", "intelligence"))
         self.__setattr__(improve, self.__getattribute__(improve)+1)  # +=1 for selected attribute
         Flytext(self.x, self.y, "LevelUp: +1 {}".format(improve), (0, 0, 255))
+        self.hpmax *= 2  # auto-heal at levelup
+        self.hp = self.hpmax
+        self.damaged = False
         # TODO: level-up sound effect
 
     def check_levelup(self):
@@ -418,6 +421,16 @@ class Player(Monster):
             self.levelup("squire")
         elif self.xp >= 60 and self.level == 3:
             self.levelup("knight")
+        elif self.xp >= 120 and self.level == 4:
+            self.levelup("lord")
+        elif self.xp >= 240 and self.level == 5:
+            self.levelup("duke")
+        elif self.xp >= 480 and self.level == 6:
+            self.levelup("arch duke")
+        elif self.xp >= 960 and self.level == 7:
+            self.levelup("prince")
+        elif self.xp >= 1920 and self.level == 8:
+            self.levelup("king")
         else:
             return ""  # add your own code here
         return "{} gains Level {}: {}".format(self.name, self.level, self.rank)
@@ -797,6 +810,7 @@ class PygView(object):
             winstyle = 0
         # pygame.mixer.pre_init(44100, -16, 2, 2048)  # setup mixer to avoid sound lag
         pygame.init()
+        self.clock = pygame.time.Clock()
         # ----------- pictureschirm einrichten --------
         PygView.width = width   #
         PygView.height = height
@@ -942,13 +956,20 @@ class PygView(object):
         for monster in self.level.monsters:
             self.screen.blit(monster.picture, (PygView.scrollx + monster.x * 32, PygView.scrolly + monster.y * 32))
             # ------- draw healthbar  ----------
+            # first, calculate if the monster has full hitpoints
+            if not monster.damaged:
+                monster.hpmax = monster.hitpoints
+            # calculate health percentage, 100% = 32 pixel
+            health = round(((monster.hitpoints / (monster.hpmax / 100)) / 100) * 32,0)
             # shows a maximum of 31 hitpoints as full green health-bar, with red from the right if less healthy
             # pygame.draw.rect(self.screen, (255,255,255), (PygView.scrollx + monster.x * 32,
             #    PygView.scrolly + monster.y * 32 - 15,32,4))
+            # red full bar
             pygame.draw.rect(self.screen, (255, 0, 0), (PygView.scrollx + monster.x * 32,
-                             PygView.scrolly + monster.y * 32 - 15, 32, 5))  
+                             PygView.scrolly + monster.y * 32 - 15, 32, 5))
+            # overwrite with green health bar
             pygame.draw.rect(self.screen, (0, 255, 0), (PygView.scrollx + monster.x * 32,
-                             PygView.scrolly + monster.y * 32 - 15, min(32, monster.hitpoints), 5))
+                             PygView.scrolly + monster.y * 32 - 15, health, 5))
         # ---- paint player -----
         self.screen.blit(self.player.picture, (PygView.scrollx + self.player.x * 32, PygView.scrolly +self.player.y*32))
         # ----- paint the GUI ---------
@@ -1005,7 +1026,6 @@ class PygView(object):
 
     def run(self):
         """The mainloop---------------------------------------------------"""
-        self.clock = pygame.time.Clock() 
         running = True
         self.count_monsters()
         self.status = ["The game begins!", "You enter the dungeon...", "Hint: goto x:5 y:5",
@@ -1043,6 +1063,7 @@ class PygView(object):
                     self.player.hunger += 0.25
                     if self.player.hunger > 100:
                         self.player.hitpoints -= 1
+                        self.player.damaged = True
                         Flytext(self.player.x, self.player.y, "Hunger: dmg 1")
                     self.player.dx = 0
                     self.player.dy = 0
@@ -1084,12 +1105,17 @@ class PygView(object):
                             if ("healing potion" in self.player.inventory and
                                     self.player.inventory["healing potion"] > 0):
                                 self.player.inventory["healing potion"] -= 1
-                                effect = random.randint(2, 5)
+                                effect = re_roll()
                                 self.player.hitpoints += effect
                                 self.status.append("{}: You drink the healing potion und gain {} hitpoints".format(
                                                    self.turns, effect))
                                 Flytext(self.player.x, self.player.y, "gulp, gulp, gulp: +{} hp".format(effect),
                                         (0, 0, 255))
+                                self.player.hitpoints = min(self.player.hpmax, self.player.hitpoints)  # limit healing
+                                if self.player.hitpoints == self.player.hpmax:
+                                    self.player.damaged = False
+                                else:
+                                    self.player.damaged = True
                             else:
                                 self.status.append("{}: You have no healing potion. Gather more loot!".format(
                                                    self.turns))
@@ -1116,6 +1142,7 @@ class PygView(object):
                     elif type(whereto).__name__ == "Wall":         # in die Wand gelaufen?
                         self.status.append("{}: Please don't run into walls!".format(self.turns))
                         self.player.hitpoints -= 1
+                        self.player.damaged = True
                         Flytext(self.player.x, self.player.y, "Ouch! Dmg: 1 hp")
                         self.player.dx, self.player.dy = 0, 0
                     # ----- testing if player runs into door
@@ -1129,6 +1156,7 @@ class PygView(object):
                             self.player.dx, self.player.dy = 0, 0
                             self.status.append("{}: Ouch! You bump into a door".format(self.turns))
                             self.player.hitpoints -= 1
+                            self.player.damaged = True
                             Flytext(self.player.x, self.player.y, "Ouch! Dmg: 1 hp")
                     # ----------------- Finally the player is arrived at a new position --------
                     self.player.x += self.player.dx
@@ -1203,6 +1231,7 @@ class PygView(object):
                             self.status.append("Your high dexterity allows you to take only half the damage")
                         self.status.append("The trap is hurting you for {} damage!".format(self.turns, damage))
                         self.player.hitpoints -= damage
+                        self.player.damaged = True
                         Flytext(self.player.x, self.player.y, "A trap! Dmg: {}".format(damage))
                         t.hitpoints -= random.randint(0, 4)  # damage to trap
                         if t.hitpoints < 1:
