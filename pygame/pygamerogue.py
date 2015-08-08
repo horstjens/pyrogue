@@ -137,6 +137,9 @@ def combat_round(attacker, defender, level):
         elif "knife" in attacker.inventory and attacker.inventory["knife"] > 0:
             damage = random.randint(damage+1, damage+2)
             weapon = "knife"
+        elif "fangs" in attacker.inventory:  # no amount check necessary, only Wolf class can have fangs
+            weapon = "fangs"
+            damage = random.choice((0, 0, 0, 1, 1, 1, 1, 2, 2, 3, 4, 5))  # special damage for wolf, can be zero
         else:
             damage = random.randint(damage, damage+1)
             weapon = "fist"
@@ -325,6 +328,8 @@ class Statue(Monster):
     def __init__(self, x, y, xp=0, level=1, hp=0, picture=""):
         """a stationary monster that only defends it self"""
         Monster.__init__(self, x, y, xp, level, hp, picture)
+        self.picture = PygView.STATUE1
+        self.hitpoints = 50
 
     def ai(self, player):
         return 0, 0
@@ -336,7 +341,9 @@ class Goblin(Monster):
         Monster.__init__(self, x, y, xp, level, hp, picture)
         # ------- put your own code here: ----
         # self.picture = random.choice((PygView.GOBLIN1, PygView.GOBLIN2, PygView.GOBLIN3))
-        # self.strength = random.randint(1,6)
+        self.picture = PygView.GOBLIN1
+        self.strength = random.randint(3, 9)
+        self.hitpoints = random.randint(20, 25)
         # -- give something into inventory
         # self.inventory["goblin amulet"] = 1
 
@@ -347,9 +354,13 @@ class Wolf(Monster):
         Monster.__init__(self, x, y, xp, level, hp, picture)
         # ------- put your own code here: ----
         # self.picture = random.choice((PygView.WOLF1, PygView.WOLF2, PygView.WOLF3))
-        # self.strength = random.randint(3,4)
+        self.picture = PygView.WOLF1
+        self.strength = random.randint(3, 4)
+        self.hitpoints = random.randint(15, 20)
         # self.dexterity = random.randint(5,8)
-        # self.inventory["fangs"] = 1 # modify combat_round and code damage for "fangs"
+        # a wolf can not have shield, armor etc
+        self.inventory = {}
+        self.inventory["fangs"] = 1 # modify combat_round and code damage for "fangs"
 
 
 class EliteWarrior(Boss):
@@ -357,10 +368,11 @@ class EliteWarrior(Boss):
         """example for a boss monster"""
         Monster.__init__(self, x, y, xp, level, hp, picture)
         # ------- put your own code here: ----
-        # self.hitpoints = 100
+        self.hitpoints = 32
         # self.picture = random.choice((PygView.WARRIOR1, PygView.WARRIOR2, PygView.WARRIOR3))
+        self.picture = PygView.WARRIOR1
         # self.strength = random.randint(12,24)   # more strength
-        # self.inventory["sword"] = 1             # 100% change to start with good equipment
+        self.inventory["sword"] = 1             # 100% change to start with good equipment
         # self.inventory["shield"] = 1
 
 
@@ -839,11 +851,15 @@ class PygView(object):
         # PygView.SIGN  = PygView.GUI.image_at((32*6,0,32,32))
         PygView.FLOOR = PygView.FLOORS.image_at((160, 32*2, 32, 32))
         PygView.FLOOR1 = PygView.FLOORS.image_at((192, 160, 32, 32))
-        PygView.TRAP = PygView.FEAT.image_at((30, 128, 32, 32), (0, 0, 0))
+        PygView.TRAP = PygView.FEAT.image_at((30, 128, 32, 32), (0, 0, 0))  # the extra (0,0,0) makes sprite transparent
         PygView.PLAYERPICTURE = PygView.FIGUREN.image_at((111, 1215, 32, 32), (0, 0, 0))
         PygView.STAIRDOWN = PygView.FEAT.image_at((32*4, 32*5, 32, 32))
         PygView.STAIRUP = PygView.FEAT.image_at((32*5, 32*5, 32, 32), (0, 0, 0))
         PygView.MONSTERPICTURE = PygView.FIGUREN.image_at((0, 0, 32, 32), (0, 0, 0))
+        PygView.STATUE1 = PygView.FIGUREN.image_at((650, 960, 28, 32), (0, 0, 0))  # Sprite is less than 32 pixel width
+        PygView.GOBLIN1 = PygView.FIGUREN.image_at((659, 990, 32, 32), (0, 0, 0))
+        PygView.WOLF1 = PygView.FIGUREN.image_at((667, 607, 32, 32), (0, 0, 0))
+        PygView.WARRIOR1 = PygView.FIGUREN.image_at((405, 989, 32, 32), (0, 0, 0))
         PygView.DOOR = PygView.FEAT.image_at((32*2, 32, 32, 32))
         PygView.LOOT = PygView.MAIN.image_at((155, 672, 32, 32), (0, 0, 0))
         PygView.KEY = PygView.FIGUREN.image_at((54, 1682, 32, 32), (0, 0, 0))
@@ -1120,15 +1136,16 @@ class PygView(object):
                                 self.status.append("{}: You have no healing potion. Gather more loot!".format(
                                                    self.turns))
                     elif event.key == pygame.K_e:
-                        food = [i for i in self.player.inventory if i == "bread" or i == "meat" and
+                        food = [i for i in self.player.inventory if (i == "bread" or i == "meat") and
                                 self.player.inventory[i] > 0]
-                        if len(food) > 0:
+                        if len(food) > 0:  # TODO: eating sound effect
                             self.player.inventory[food[0]] -= 1
-                            Flytext(self.player.x, self.player.y, "Yummy {}".format(food[0]), (0,200,0))
+                            Flytext(self.player.x, self.player.y, "Yummy {}".format(food[0]), (0, 200, 0))
                             self.player.hunger -= random.randint(5, 30)
-                            self.player.hunger = max(0, self.player.hunger) # hunger can not become < 0
+                            self.player.hunger = max(0, self.player.hunger)  # hunger can not become < 0
                         else:
                             self.status.append("You have nothing edible in your inventory. Fight and find loot!")
+                            Flytext(self.player.x, self.player.y, "no food")  # TODO: no food sound effect
                     # --------------- player goes to a new location ----------
                     # whereto: Block (Floor, Wall, Stair)
                     whereto = self.level.layout[(self.player.x+self.player.dx, self.player.y+self.player.dy)]
