@@ -51,9 +51,9 @@ def combat_round(m1, m2):
     txt = []         # 
     if m1.hitpoints > 0 and m2.hitpoints > 0:
         txt.append("{} ({} hp) swings at {} ({} hp)".format(m1.name, m1.hitpoints, m2.name, m2.hitpoints))
-        if "splayer_posrd" in m1.inventory:      # and inventory["weapon"] >0:
+        if "sword" in m1.inventory:      # and inventory["weapon"] >0:
             damage = random.randint(1, 4)
-            weapon = "splayer_posrd"
+            weapon = "sword"
         elif "knife" in m1.inventory: 
             damage = random.randint(1, 3)
             weapon = "knife"
@@ -110,8 +110,7 @@ class Monster(object):
 class Boss(Monster):
     def __init__(self, x, y, hp=0):
         Monster.__init__(self, x, y, hp)
-
-
+        
 class Statue(Monster):
     def __init__(self, x, y, hp=0):
         Monster.__init__(self, x, y, hp)
@@ -125,7 +124,7 @@ class Player(Monster):
         self.z = 0        # z=0 is the first dungeon, z=2 is the second dungeon level etc.
 
     def show_inventory(self):
-        """Zeigt Anzahl und Art von Gegenständen im inventory"""
+        """shows the amount of things in player rucksack"""
         print("you carry with you those items:")
         if len(self.inventory) == 0:
             print("your inventory is empty")
@@ -423,5 +422,8 @@ def game(levels, playerx=1, playery=1, playerhp=50, playername="Rambo"):
     p.show_inventory()
 
 if __name__ == "__main__":
-    level_list = Level.check_levels("level1demo.txt","level2demo.txt")  # load level1demo.txt and level2demo.txt
-    game(level_list, 1, 1, 50, "Rambo") # player "Rambo" starts at x1,x2 with 50 hitpoints
+    # load level1demo.txt and level2demo.txt
+    level_list = Level.check_levels("level1demo.txt",
+                                    "level2demo.txt")  
+    # player "Rambo" starts at x1,x2 with 50 hitpoints
+    game(level_list, 1, 1, 50, "Rambo") 
