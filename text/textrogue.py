@@ -268,8 +268,8 @@ class Level(object):
             self.lines.append(good_line)
             y += 1
 
-        print("level init: lines:")
-        print(self.lines)
+        #print("level init: lines:")
+        #print(self.lines)
     
     def update(self):
         """remove all monsters with fewer than 1 hitpoints from level"""
