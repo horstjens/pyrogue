@@ -23,7 +23,7 @@ def loot():
     return random.choice(zeugs)   
 
 
-def help():
+def helpscreen():
     """show help text, waits for ENTER key"""
     print("- - - - - - - - - - - - - - - - - - - - - - - - - - - -")
     print("commands:")
@@ -52,19 +52,19 @@ def combat_round(attacker, defender):
     attackername = type(attacker).__name__
     defendername = type(defender).__name__
     if attacker.hitpoints > 0 and defender.hitpoints > 0:
-        txt.append("{} ({} hp) swings at {} ({} hp)".format(attackername, attacker.hitpoints, defendername, defender.hitpoints))
+        txt.append("{} ({} hp) swings at {} ({} hp)".format(attackername, attacker.hitpoints, defendername,
+                                                            defender.hitpoints))
         #          stats: [0]:min-damage, 
         #                 [1]:max-damage, 
         #                 [2]:chance_for_double_damage,
         #                 [3]:chance_for_destroy_weapon
         stats = {"sword": (2, 5, 0.1,  0.01),
                  "knife": (1, 3, 0.05, 0.01),
-                 "fist":  (1, 2, 0.01, 0.00) }
+                 "fist":  (1, 2, 0.01, 0.00)}
         # order weapons here from best to worst. fist must be last
         for weapon in ["sword", "knife", "fist"]:
             if weapon in attacker.inventory:
-                damage = random.randint(stats[weapon][0],
-                                        stats[weapon][1])
+                damage = random.randint(stats[weapon][0], stats[weapon][1])
                 # chance for double damage?
                 if random.random() < stats[weapon][2]:
                     txt.append("{} makes double damage!".format(weapon))
@@ -72,8 +72,8 @@ def combat_round(attacker, defender):
                 # chance to destroy weapon?
                 if random.random() < stats[weapon][3]:
                     txt.append("{} is destroyed!".format(weapon))
-                    attacker.inventory[weapon] -= 1 # remove weapon
-                    attacker.update_inventory() # remove entrys with 0
+                    attacker.inventory[weapon] -= 1  # remove weapon
+                    attacker.update_inventory()      # remove entrys with 0
                 txt.append("{} attacks {} with {} for {} raw damage".format(
                            attackername, defendername, weapon, damage))
                 break
@@ -81,24 +81,23 @@ def combat_round(attacker, defender):
         #           stats: [0]: block_chance,
         #                  [1]: block_value,
         #                  [2]: chance_to_destroy
-        stats = {"armor":  ( 0.75, 1, 0.01),
-                 "shield": ( 0.5,  2, 0.04),
-                 "helm":   ( 0.3,  1, 0.01) }
+        stats = {"armor":  (0.75, 1, 0.01),
+                 "shield": (0.5,  2, 0.04),
+                 "helm":   (0.3,  1, 0.01)}
         for piece in ["armor", "shield", "helm"]:
             if piece in defender.inventory:
                 # chance to block?
                 if random.random() < stats[piece][0]:
                     blocked_damage += stats[piece][1]
-                    txt.append("{} of {} blocks {} damage".format(piece,
-                        defendername, stats[piece][1]))
+                    txt.append("{} of {} blocks {} damage".format(piece, defendername, stats[piece][1]))
                 # chance to destroy armor?
                 if random.random() < stats[piece][2]:
                     txt.append("{} is shattered!")
-                    defender.inventory[piece] -= 1 # remove armor piece
+                    defender.inventory[piece] -= 1  # remove armor piece
                     defender.update_inventory()
         
         damage -= blocked_damage
-        damage = max(0, damage) # damage can not be negative
+        damage = max(0, damage)  # damage can not be negative
         if damage > 0:
             defender.hitpoints -= damage
             txt.append("{} looses {} hitpoints ({} hp left)".format(defendername, damage, defender.hitpoints))
@@ -106,7 +105,7 @@ def combat_round(attacker, defender):
             txt.append("{} stays unharmed".format(defendername))
     for line in txt:
         print(line)
-    if len(txt)> 0:
+    if len(txt) > 0:
         wait()
 
 
@@ -133,23 +132,20 @@ class Monster(object):
         self.x = x
         self.y = y
         self.sight_radius = 2
-        #self.name = "Monster"
-        self.inventory = {}
-        self.inventory["fist"] = 1 # each monster has a fist to fight
+        self.inventory = {"fist": 1}  # each monster has a fist to fight
         for z in ["knife", "sword", "shield", "armor"]:
             if random.random() < 0.1:  # 10% Chance
                 self.inventory[z] = 1
-    
+
     def update_inventory(self):
         """remove all items from the inventory with value less than 1"""
-        zeroitems = [k for k,v in self.inventory.items() if v < 1]
+        zeroitems = [k for k, v in self.inventory.items() if v < 1]
         for key in zeroitems:
             del self.inventory[key]
     
     def ai(self, player):
         """returns dx and dy for monster movement"""
-        if (abs(player.x - self.x) < self.sight_radius and
-            abs(player.y - self.y) < self.sight_radius):
+        if abs(player.x - self.x) < self.sight_radius and abs(player.y - self.y) < self.sight_radius:
             dx, dy = 0, 0
             if self.x < player.x:
                 dx = 1
@@ -159,19 +155,21 @@ class Monster(object):
                 dy = 1
             elif self.y > player.y:
                 dy = -1
-            if dx != 0 and dy != 0: # do not move diagonal
-                dx, dy = random.choice([(dx,0), (0,dy)])
-        else: # do not move diagonal
-            dx, dy = random.choice([(-1,0),(1,0),(0,-1),(0,1)]) 
+            if dx != 0 and dy != 0:  # do not move diagonal
+                dx, dy = random.choice([(dx, 0), (0, dy)])
+        else:  # do not move diagonal
+            dx, dy = random.choice([(-1, 0), (1, 0), (0, -1), (0, 1)])
         return dx, dy
+
 
 class Boss(Monster):
     def __init__(self, x, y, hp=0):
         Monster.__init__(self, x, y, hp)
-        self.hitpoints = random.randint(15,30)
+        self.hitpoints = random.randint(15, 30)
         self.inventory["sword"] = 1
-        self.sight_radius = 7 # aggro
-        
+        self.sight_radius = 7  # aggro
+
+
 class Statue(Monster):
     def __init__(self, x, y, hp=0):
         Monster.__init__(self, x, y, hp)
@@ -179,14 +177,14 @@ class Statue(Monster):
         self.inventory["shield"] = 1
     
     def ai(self, player):
-        return 0, 0 # statue is immobile, never attacks, only defends
+        return 0, 0  # statue is immobile, never attacks, only defends
 
 
 class Player(Monster):
     def __init__(self, x, y, hp=25, name="Player"):
         Monster.__init__(self, x, y, hp)
         self.name = name
-        self.inventory["armor"]=1
+        self.inventory["armor"] = 1
         self.keys = 0
         self.z = 0        # z=0 is the first dungeon, z=2 is the second dungeon level etc.
 
@@ -213,18 +211,17 @@ class Level(object):
 
     # class attribute
     LEGEND = {
-    "#": "wall",
-    "D": "door",
-    ".": "floor",
-    "<": "stair up",
-    ">": "stair down",
-    "T": "trap",
-    "M": "monster",
-    "B": "Boss",
-    "S": "Statue",
-    "L": "loot",
-    "k": "key"
-    }
+        "#": "wall",
+        "D": "door",
+        ".": "floor",
+        "<": "stair up",
+        ">": "stair down",
+        "T": "trap",
+        "M": "monster",
+        "B": "Boss",
+        "S": "Statue",
+        "L": "loot",
+        "k": "key"}
 
     @staticmethod
     def load_level(filename):
@@ -333,9 +330,6 @@ class Level(object):
                 x += 1
             self.lines.append(good_line)
             y += 1
-
-        #print("level init: lines:")
-        #print(self.lines)
     
     def update(self):
         """remove all monsters with fewer than 1 hitpoints from level"""
@@ -357,8 +351,6 @@ class Level(object):
         """moves monster in a random direction (or not at all)"""
         for monster in self.monsters:
             x, y = monster.x, monster.y
-            #dirs = [(-1, 1), (0, 1), (1, 1), (-1, 0), (1, 0), (-1, -1), (0, -1), (1, -1)]
-            #dx, dy = random.choice(dirs)
             dx, dy = monster.ai(player)
             if self.is_monster(x + dx, y + dy):
                 continue
@@ -381,7 +373,7 @@ class Level(object):
                 if x == px and y == py:
                     print("@", end="")
                 elif self.is_monster(x, y):
-                    m = self. is_monster(x,y) 
+                    m = self. is_monster(x, y)
                     # print first char of monster class name
                     print(type(m).__name__[0], end="") 
                 elif char in "123456789":
@@ -411,7 +403,7 @@ def game(levels, playerx=1, playery=1, playerhp=50, playername="Rambo"):
             wait()
             continue                   # do not move monsters etc when inspecting inventory
         elif a == "?" or a == "help":  # ---- help -------
-            help()
+            helpscreen()
             continue
         if a == "a":                   # ------------- move the player ---------
             dx -= 1
