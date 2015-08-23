@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-               # only necessary for python version2
+# -*- coding: utf-8 -*-                # only necessary for python version2
 from __future__ import print_function  # only necessary for python version2
 from __future__ import division        # only necessary for python version2
 try:                                   # only necessary for python version2
@@ -25,8 +25,8 @@ import sys
 
 
 def re_roll(sides=6, number=1):
-    """roll 'number' of die and re-roll if the highest side was rolled
-       a six sided dice if rolling a 6 count as 5 and can roll again
+    """roll 'number' of die and re-roll if the highest side was rolled.
+       A six sided dice if rolling a 6 count as 5 and can roll again
        this makes possible very high numbers with a very low chance"""
     dsum = 0  # sum is already a python keyword
     for _ in range(number):
@@ -59,7 +59,7 @@ def ask(question, screen,  image=None, x=-1, y=-1, center=True,  imagex=0, image
     if y == -1:
         y = 0
     while True:
-        pygame.time.wait(50)  # wartet 50 millisekunden?
+        pygame.time.wait(50)  # waits 50 millisekunden?
         # event = pygame.event.poll()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -126,34 +126,60 @@ def combat_round(attacker, defender, level):
        should be ordered by best effect to smallest effect.
        returns lines of text"""
     txt = []
+    attackername = type(attacker).__name__
+    defendername = type(defender).__name__
     if attacker.hitpoints > 0 and defender.hitpoints > 0:
         PygView.macesound.play()
-        txt.append("combat: {} ({}, {} hp) swings at {} ({}, {} hp)".format(attacker.name, type(attacker).__name__,
-                   attacker.hitpoints, defender.name, type(defender).__name__, defender.hitpoints))
-        damage = attacker.level
-        if "sword" in attacker.inventory and attacker.inventory["sword"] > 0:
-            damage = random.randint(damage, damage+3)
-            weapon = "sword"
-        elif "knife" in attacker.inventory and attacker.inventory["knife"] > 0:
-            damage = random.randint(damage+1, damage+2)
-            weapon = "knife"
-        elif "fangs" in attacker.inventory:  # no amount check necessary, only Wolf class can have fangs
-            weapon = "fangs"
-            damage = random.choice((0, 0, 0, 1, 1, 1, 1, 2, 2, 3, 4, 5))  # special damage for wolf, can be zero
-        else:
-            damage = random.randint(damage, damage+1)
-            weapon = "fist"
-        txt.append("combat: {} attacks {} with {} for {} damage".format(
-            attacker.name, defender.name, weapon, damage))
+        txt.append("combat: {} ({} hp) swings at {} ({} hp)".format( attackername,
+                   attacker.hitpoints, defendername, defender.hitpoints))
+        #          stats: [0]:min-damage,
+        #                 [1]:max-damage,
+        #                 [2]:chance_for_double_damage,
+        #                 [3]:chance_for_destroy_weapon
+        stats = {"sword": (2, 5, 0.1,  0.01),
+                 "knife": (2, 3, 0.05, 0.01),
+                 "fangs": (1, 3, 0.15, 0.00),
+                 "fist":  (1, 2, 0.01, 0.00)}
+        # order weapons here from best to worst. fist must be last item in list
+        for weapon in ["sword", "knife", "fangs", "fist"]:
+            if weapon in attacker.inventory:
+                damage = random.randint(stats[weapon][0], stats[weapon][1])
+                #if weapon == "fangs":
+                #    damage = random.choice((0, 0, 0, 1, 1, 1, 1, 2, 2, 3, 4, 5))  # special damage for wolf, can be zero
+                #  chance for double damage?
+                if random.random() < stats[weapon][2]:
+                    txt.append("{} makes double damage!".format(weapon))
+                    damage *= 2
+                # chance to destroy weapon? note that fist and fangs can not be destroyed (chance=0.00%)
+                if random.random() < stats[weapon][3]:
+                    txt.append("{} is destroyed!".format(weapon))
+                    attacker.inventory[weapon] -= 1  # remove weapon
+                    attacker.update_inventory()      # remove entrys with 0
+                damage += attacker.level
+                txt.append("{} attacks {} with {} for {} raw damage".format(
+                           attackername, defendername, weapon, damage))
+                break
         blocked_damage = 0
-        if "armor" in defender.inventory:
-            damage -= damage+1
-            blocked_damage += 1
-            txt.append("combat: armor of {} absorbs one point of damage".format(defender.name))
-        if "shield" in defender.inventory:
-            damage -= (damage-1)+1
-            blocked_damage += 1
-            txt.append("combat: shield of {} absorbs one point of damage".format(defender.name))
+        #           stats: [0]: block_chance,
+        #                  [1]: block_value,
+        #                  [2]: chance_to_destroy
+        stats = {"armor":  (0.75, 1, 0.01),
+                 "shield": (0.5,  2, 0.04),
+                 "helm":   (0.3,  1, 0.01)}
+        for piece in ["armor", "shield", "helm"]:
+            if piece in defender.inventory:
+                # chance to block?
+                if random.random() < stats[piece][0]:
+                    blocked_damage += stats[piece][1]
+                    txt.append("{} of {} blocks {} damage".format(piece, defendername, stats[piece][1]))
+                # chance to destroy armor?
+                if random.random() < stats[piece][2]:
+                    txt.append("{} is shattered!")
+                    defender.inventory[piece] -= 1  # remove armor piece
+                    defender.update_inventory()
+
+        damage -= blocked_damage
+        damage = max(0, damage)  # damage can not be negative
         fly_dx, fly_dy = 0, -30
         if defender.x > attacker.x:
             fly_dx = 50
@@ -169,26 +195,27 @@ def combat_round(attacker, defender, level):
         if damage > 0:
             defender.hitpoints -= damage
             defender.damaged = True
-            txt.append("combat: {} looses {} hitpoints ({} hp left)".format(defender.name, damage, defender.hitpoints))
+            txt.append("combat: {} looses {} hitpoints ({} hp left)".format(defendername, damage,
+                                                                            defender.hitpoints))
             if defender.hitpoints < 1:
                 # ---------- defender is dead  ----------------
                 exp = random.randint(7, 10)
                 attacker.xp += exp
                 attacker.kills += 1
-                victim = type(defender).__name__
+                victim = defendername
                 if victim in attacker.killdict:
                     attacker.killdict[victim] += 1
                 else:
                     attacker.killdict[victim] = 1
-                txt.append("combat: {} has {} hp left, {} gains {} Xp".format(defender.name, defender.hitpoints,
-                           attacker.name, exp))
+                txt.append("combat: {} has {} hp left, {} gains {} Xp".format(defendername, defender.hitpoints,
+                           attackername, exp))
                 line = attacker.check_levelup()
                 if line:
                     txt.append(line)
                 if random.random() < 0.5:    # 50% Chance to drop edibles
                     level.loot.append(Loot(defender.x, defender.y, "meat"))
         else:
-            txt.append("combat: {} is not harmed".format(defender.name))
+            txt.append("combat: {} is not harmed".format(defendername))
     attacker.hunger += 1
     defender.hunger += 1
     return txt
@@ -288,40 +315,51 @@ class Monster(object):
             self.picture = PygView.MONSTERPICTURE
         else:
             self.picture = picture
-        self.name = random.choice(("Frank", "Dilbert", "Bob", "Alice"))
+        #self.name = random.choice(("Frank", "Dilbert", "Bob", "Alice"))
         self.strength = random.randint(1, 6)
         self.dexterity = random.randint(1, 6)
         self.intelligence = random.randint(1, 6)
-        self.inventory = {}
+        self.inventory = {"fist": 1}  # each monster has a fist as backup weapon
+        self.sight_radius = 2  # distance where the monster starts hunting the player
         for z in ["knife", "sword", "shield", "armor"]:
             if random.random() < 0.1:  # each Item has a 10% Chance 
                 self.inventory[z] = 1
+
+    def update_inventory(self):
+        """remove all items from the inventory with value less than 1"""
+        zeroitems = [k for k, v in self.inventory.items() if v < 1]
+        for key in zeroitems:
+            del self.inventory[key]
 
     def check_levelup(self):
         return ""
 
     def ai(self, player):
-        """returns a random dx, dy: where the monster wants to go"""
-        dirs = [(-1, 1), (0, 1), (1, 1), (-1, 0), (1, 0), (-1, -1), (0, -1), (1, -1)]
-        return random.choice(dirs)   # return dx, xy
+        """returns a random dx, dy: where the monster wants to go (cardinal direction only)"""
+        # dirs = [(-1, 1), (0, 1), (1, 1), (-1, 0), (1, 0), (-1, -1), (0, -1), (1, -1)]
+        # return random.choice(dirs)   # return dx, xy
+        if abs(player.x - self.x) < self.sight_radius and abs(player.y - self.y) < self.sight_radius:
+            dx, dy = 0, 0
+            if self.x < player.x:
+                dx = 1
+            elif self.x > player.x:
+                dx = -1
+            if self.y < player.y:
+                dy = 1
+            elif self.y > player.y:
+                dy = -1
+            if dx != 0 and dy != 0:  # do not move diagonal, choose one valid direction instead
+                dx, dy = random.choice([(dx, 0), (0, dy)])
+        else:
+            dx, dy = random.choice([(-1, 0), (1, 0), (0, -1), (0, 1)])  # roaming around
+        return dx, dy
 
 
 class Boss(Monster):
     def __init__(self, x, y, xp=0, level=1, hp=0, picture=""):
         """a monster that moves toward the player"""
         Monster.__init__(self, x, y, xp, level, hp, picture)
-
-    def ai(self, player):
-        dx, dy = 0, 0
-        if self.x > player.x:
-            dx = -1
-        elif self.x < player.x:
-            dx = 1
-        if self.y > player.y:
-            dy = -1
-        elif self.y < player.y:
-            dy = 1
-        return dx, dy
+        self.sight_radius = 7  # boss can see farther to hunt player
 
 
 class Statue(Monster):
@@ -332,7 +370,7 @@ class Statue(Monster):
         self.hitpoints = 50
 
     def ai(self, player):
-        return 0, 0
+        return 0, 0  # statue is immobile and will never attack player, only defend it self
 
 
 class Goblin(Monster):
@@ -359,8 +397,7 @@ class Wolf(Monster):
         self.hitpoints = random.randint(15, 20)
         # self.dexterity = random.randint(5,8)
         # a wolf can not have shield, armor etc
-        self.inventory = {}
-        self.inventory["fangs"] = 1 # modify combat_round and code damage for "fangs"
+        self.inventory = {"fangs": 1}  # overwriting inventory from Monster, a wolf can not have other weapons
 
 
 class EliteWarrior(Boss):
@@ -372,7 +409,7 @@ class EliteWarrior(Boss):
         # self.picture = random.choice((PygView.WARRIOR1, PygView.WARRIOR2, PygView.WARRIOR3))
         self.picture = PygView.WARRIOR1
         # self.strength = random.randint(12,24)   # more strength
-        self.inventory["sword"] = 1             # 100% change to start with good equipment
+        self.inventory["sword"] = 1             # 100% chance to start with good equipment
         # self.inventory["shield"] = 1
 
 
@@ -388,12 +425,14 @@ class Golem(Boss):
 class Player(Monster):
     def __init__(self, x, y, xp=0, level=1, hp=0, picture=""):
         Monster.__init__(self, x, y, xp, level, hp, picture)
-        self.name = "Player"
         self.rank = "unworthy"
-        self.inventory = {}
+        self.name = "anonymous"  # will be overwritten by main loop
+        self.inventory = {"shield": 1, "fist": 1}  # player start with shield and fist only
         self.z = 0
         self.keys = []
-        self.druid_visited = False
+        self.story1 = False  # for story missions
+        self.story2 = False  # for story missions
+        self.story3 = False  # for story missions
         # self.hunger = 0   # already defined in class Monster, because combat makes hungry
         self.mana = 0
         if hp == 0:
@@ -445,10 +484,10 @@ class Player(Monster):
             self.levelup("king")
         else:
             return ""  # add your own code here
-        return "{} gains Level {}: {}".format(self.name, self.level, self.rank)
+        return "{} gains Level {}: {}".format(type(self).__name__, self.level, self.rank)
 
     def ai(self, player=None):
-        return 0, 0
+        return 0, 0  # overwriting ai from Monster calss. Player get his own AI code from mainloop
 
     def show_inventory(self):
         """show inventory, return lines of text"""
@@ -1183,7 +1222,7 @@ class PygView(object):
                     # --------------------------- Story Missions ---------------------
                     # ----------------------------------------------------------------
                     # --------- Story 1: visit the druids ---------------
-                    if self.player.x == 5 and self.player.y == 5 and self.player.z == 0 and not self.player.druid_visited:
+                    if self.player.x == 5 and self.player.y == 5 and self.player.z == 0 and not self.story1:
                         # at position x5, y5 in first level (z0)
                         lines = ["I welcome you, wandering hero!",
                                  "Please liberate us",
@@ -1191,9 +1230,9 @@ class PygView(object):
                                  "from those dangerous, evil monsters.",
                                  "Slay them all!"]
                         display_textlines(lines, self.screen, (0, 255, 255), PygView.DRUID)
-                        self.player.druid_visited = True
+                        self.player.story1 = True
                     # ------------- Story 2:  all monsters killed, druid mission complete ---------
-                    if self.mo2 == 0 and self.player.druid_visited:
+                    if self.mo2 == 0 and self.player.druid_visited and not self.player.story2:
                         lines = ["Congratulation, o hero",
                                  "You have liberated us druids",
                                  "and slayed all the evil monsters",
@@ -1201,9 +1240,10 @@ class PygView(object):
                         display_textlines(lines, self.screen, (0,255,255), PygView.DRUID)
                         self.player.inventory["reward: half a kingdom"] = 1
                         self.player.inventory["reward: friendship of the druids"] = 1
-                        running = False
-                    # ---------- Story 3: Player destroys statue and goes to oosition of statue (18,14) in level2 (z=1)
-                    if self.player.z == 1 and self.player.x == 14 and self.player.y == 18:
+                        self.player.story2 = True
+                        #running = False
+                    # ---------- Story 3: Player destroys statue and goes to position of statue (18,14) in level2 (z=1)
+                    if self.player.z == 1 and self.player.x == 14 and self.player.y == 18 and not self.player.story3:
                         # if player can reach this place he defeated the statue
                         Flytext(self.player.x, self.player.y, "uh-oh...what happens now?", (255, 255, 255))
                         # replace walls with floor so that imprisoned monsters can hunt player
@@ -1217,6 +1257,7 @@ class PygView(object):
                         self.level.layout[(14, 11)] = Floor()
                         # place a new Monster at the stairs x:1 y:1 in level 2 (z=1)
                         self.level.monsters.append(Statue(1, 1))
+                        self.player.story3 = True
                     # ------------- warning signs ----------
                     for sign in self.level.signs:
                         if sign.x == self.player.x and sign.y == self.player.y:
