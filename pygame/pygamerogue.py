@@ -1222,7 +1222,7 @@ class PygView(object):
                     # --------------------------- Story Missions ---------------------
                     # ----------------------------------------------------------------
                     # --------- Story 1: visit the druids ---------------
-                    if self.player.x == 5 and self.player.y == 5 and self.player.z == 0 and not self.story1:
+                    if self.player.x == 5 and self.player.y == 5 and self.player.z == 0 and not self.player.story1:
                         # at position x5, y5 in first level (z0)
                         lines = ["I welcome you, wandering hero!",
                                  "Please liberate us",
