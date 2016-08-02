@@ -47,11 +47,11 @@ def write(msg="pygame is cool", fontcolor=(255, 0, 255), fontsize=42, font=None)
     return mytext
 
 
-def ask(question, screen,  image=None, x=-1, y=-1, center=True,  imagex=0, imagey=0):   # from pygame newsgroup
+def ask(question, screen,  image=None, x=-1, y=-1, center=True,  imagex=0, imagey=0, fontcolor=(255, 0, 255), fontsize=42, font=None):   # from pygame newsgroup
     """pygame version of input(). returns answer text string"""
     pygame.font.init()
     text = ""
-    line = write(question)
+    line = write(question, fontcolor, fontsize, font)
     screen.blit(line, (x, y))
     pygame.display.flip()
     if x == -1:
@@ -77,7 +77,7 @@ def ask(question, screen,  image=None, x=-1, y=-1, center=True,  imagex=0, image
                 continue  # return "village idiot"
             elif event.key <= 127:
                 text += chr(event.key)
-        line = write(question + ": " + text)
+        line = write(question + ": " + text, fontcolor, fontsize, font)
         screen.fill((0, 0, 0))
         screen.blit(line, (x, y))
         if image:
@@ -586,6 +586,13 @@ class Trap(Item):
             damage += random.randint(1, 6)
         return damage
 
+class Fruit(Item):
+     def __init__(self, x, y):
+         """a fruit with a ghost inside"""
+         Item.__init__(self, x, y)
+         self.picture = PygView.APPLE
+         #self.hitpoints = 1
+         
 
 class Key(Item):
     def __init__(self, x, y, color="dull"):
@@ -643,6 +650,7 @@ class Level(object):
         "B": "Boss",
         "S": "Statue",
         "L": "loot",
+        "a": "Apple",
         "k": "key"
     }
 
@@ -737,6 +745,7 @@ class Level(object):
         self.signs = []
         self.traps = []
         self.doors = []
+        self.fruits = []
         self.loot = []
         self.keys = []
         self.width = 0
@@ -758,6 +767,8 @@ class Level(object):
                     self.traps.append(Trap(x, y))       # object on top of Floor()
                 elif char == "D":
                     self.doors.append(Door(x, y))       # object on top of Floor()
+                elif char == "a":
+                    self.fruits.append(Fruit(x,y))     # object on top of Floor()
                 elif char == "L":
                     self.loot.append(Loot(x, y))        # object on top of Floor()
                 elif char == "k":
@@ -785,9 +796,11 @@ class Level(object):
         """only keep monster, traps etc. with hit points. only keep items not carried by player"""
         self.monsters = [m for m in self.monsters if m.hitpoints > 0]
         self.traps = [t for t in self.traps if t.hitpoints > 0]
+        self.fruits = [f for f in self.fruits if f.hitpoints >0]
         self.keys = [k for k in self.keys if not k.carried]
         self.loot = [i for i in self.loot if not i.carried]
         self.doors = [d for d in self.doors if d.closed]  # opened doors disappear
+        #print("fruits:", len(self.fruits))
 
     def is_monster(self, x, y):
         """testing if a monster lurks at a coordinate """
@@ -891,6 +904,7 @@ class PygView(object):
         PygView.FLOOR = PygView.FLOORS.image_at((160, 32*2, 32, 32))
         PygView.FLOOR1 = PygView.FLOORS.image_at((192, 160, 32, 32))
         PygView.TRAP = PygView.FEAT.image_at((30, 128, 32, 32), (0, 0, 0))  # the extra (0,0,0) makes sprite transparent
+        PygView.APPLE = PygView.MAIN.image_at((382,368,30,30), (0,0,0))
         PygView.PLAYERPICTURE = PygView.FIGUREN.image_at((111, 1215, 32, 32), (0, 0, 0))
         PygView.STAIRDOWN = PygView.FEAT.image_at((32*4, 32*5, 32, 32))
         PygView.STAIRUP = PygView.FEAT.image_at((32*5, 32*5, 32, 32), (0, 0, 0))
@@ -999,6 +1013,8 @@ class PygView(object):
                     self.background.blit(door.picture, (x * 32, y * 32))
                 for loot in [l for l in self.level.loot if l.x == x and l.y == y and not l.carried]:
                     self.background.blit(loot.picture, (x * 32, y * 32))
+                for fruit in [f for f in self.level.fruits if f.x == x and f.y == y and f.hitpoints >0]:
+                    self.background.blit(fruit.picture, (x* 32, y * 32))
                 for key in [k for k in self.level.keys if k.x == x and k.y == y and not k.carried]:
                     self.background.blit(key.picture, (x * 32, y * 32))
         # Scrolling: paint the player in the middle of the screen # TODO: improve gui layout
@@ -1267,6 +1283,18 @@ class PygView(object):
                             self.status.append("{}: stair down: press [>] to climb down".format(self.turns))
                         else:
                             self.status.append("{}: stair up: press [<] to climb up".format(self.turns))
+                    # --------- is there a fruit (apple) ? if yes, relase the apple-ghost -------
+                    for fruit in self.level.fruits:
+                        if fruit.x == self.player.x and fruit.y == self.player.y:
+                            #key.carried = True
+                            #self.player.keys.append(key)
+                            fruit.hitpoints = 0
+                            self.status.append("{} you crunch an apple ".format(self.turns))
+                            Flytext(self.player.x, self.player.y, "magic apple", (0, 200, 128))
+                            lines = ["i am the apple-ghost",
+                                     "thanks for releasing me",
+                                     ]
+                            display_textlines(lines, self.screen, (0, 255, 255), PygView.DRUID)
                     # --------- is there a trap ? --------------
                     # ---- detect traps around player
                     dirs = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
@@ -1373,7 +1401,7 @@ class PygView(object):
 
 if __name__ == '__main__':
     # add your own level files here. use os.path.join() for other folders
-    sourcefilenames = ["level1demo.txt", "level2demo.txt"]
+    sourcefilenames = ["level001.txt", "level002.txt"]
     levels = Level.check_levels(sourcefilenames)         # testing level for design errors
     # 800 x 600 pixel, Player start at x=1, y=1, in level 0 (the first level) with 0 xp, has level 1 and 50 hit points
     PygView(levels, 800, 600, 1, 1, 0, 1, 50).run()
