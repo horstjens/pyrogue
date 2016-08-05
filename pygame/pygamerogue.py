@@ -46,6 +46,11 @@ def write(msg="pygame is cool", fontcolor=(255, 0, 255), fontsize=42, font=None)
     mytext = mytext.convert_alpha()
     return mytext
 
+def get_mousetile():
+    """get x and y position of the tile (tile-coord system, not pixel) where the mousepointer is hovering over"""
+    x = -((PygView.scrollx - pygame.mouse.get_pos()[0]) // 32 )-1
+    y = -((PygView.scrolly - pygame.mouse.get_pos()[1]) // 32 )-1
+    return (x,y)
 
 def ask(question, screen,  image=None, x=-1, y=-1, center=True,  imagex=0, imagey=0, fontcolor=(255, 0, 255), fontsize=42, font=None):   # from pygame newsgroup
     """pygame version of input(). returns answer text string"""
@@ -331,6 +336,12 @@ class Monster(object):
         for key in zeroitems:
             del self.inventory[key]
 
+    def update_health(self):
+        """calculate health as a percentage of hpmax and hitpoints"""
+        # beware of division by zero
+        self.health = self.hitpoints  / self.hpmax
+        
+
     def check_levelup(self):
         return ""
 
@@ -360,6 +371,7 @@ class Boss(Monster):
         """a monster that moves toward the player"""
         Monster.__init__(self, x, y, xp, level, hp, picture)
         self.sight_radius = 7  # boss can see farther to hunt player
+        self.hpmax = self.hitpoints 
 
 
 class Statue(Monster):
@@ -368,6 +380,7 @@ class Statue(Monster):
         Monster.__init__(self, x, y, xp, level, hp, picture)
         self.picture = PygView.STATUE1
         self.hitpoints = 50
+        self.hpmax = self.hitpoints 
 
     def ai(self, player):
         return 0, 0  # statue is immobile and will never attack player, only defend it self
@@ -382,6 +395,7 @@ class Goblin(Monster):
         self.picture = PygView.GOBLIN1
         self.strength = random.randint(3, 9)
         self.hitpoints = random.randint(20, 25)
+        self.hpmax = self.hitpoints 
         # -- give something into inventory
         # self.inventory["goblin amulet"] = 1
 
@@ -395,6 +409,7 @@ class Wolf(Monster):
         self.picture = PygView.WOLF1
         self.strength = random.randint(3, 4)
         self.hitpoints = random.randint(15, 20)
+        self.hpmax = self.hitpoints 
         # self.dexterity = random.randint(5,8)
         # a wolf can not have shield, armor etc
         self.inventory = {"fangs": 1}  # overwriting inventory from Monster, a wolf can not have other weapons
@@ -406,6 +421,7 @@ class EliteWarrior(Boss):
         Monster.__init__(self, x, y, xp, level, hp, picture)
         # ------- put your own code here: ----
         self.hitpoints = 32
+        self.hpmax = self.hitpoints 
         # self.picture = random.choice((PygView.WARRIOR1, PygView.WARRIOR2, PygView.WARRIOR3))
         self.picture = PygView.WARRIOR1
         # self.strength = random.randint(12,24)   # more strength
@@ -833,7 +849,7 @@ class Level(object):
 
 class Flytext(pygame.sprite.Sprite):
     def __init__(self, x, y, text="hallo", rgb=(255, 0, 0), blockxy = True,
-                 dx=0, dy=-50, duration=2, acceleration_factor = 0.96):
+                 dx=0, dy=-50, duration=2, acceleration_factor = 0.96, delay = 0):
         """a text flying upward and for a short time and disappearing"""
         self._layer = 7  # order of sprite layers (before / behind other sprites)
         pygame.sprite.Sprite.__init__(self, self.groups)  # THIS LINE IS IMPORTANT !!
@@ -850,6 +866,39 @@ class Flytext(pygame.sprite.Sprite):
         self.image = write(self.text, (self.r, self.g, self.b), 22)  # font 22
         self.rect = self.image.get_rect()
         self.rect.center = (self.x, self.y)
+        self.time = 0 - delay
+
+    def update(self, seconds):
+        self.time += seconds
+        if self.time < 0:
+            self.rect.center = (-100,-100)
+        else:
+            self.y += self.dy * seconds
+            self.x += self.dx * seconds
+            self.dy *= self.acc  # slower and slower
+            self.dx *= self.acc
+            self.rect.center = (self.x, self.y)
+            
+            if self.time > self.duration:
+                self.kill()      # remove Sprite from screen and from groups
+
+
+class FlyImage(pygame.sprite.Sprite):
+    def __init__(self, start_x, start_y, target_x, target_y, image, duration=1, acceleration_factor = 1.00):
+        """an image  flying toward a target"""
+        self._layer = 7  # order of sprite layers (before / behind other sprites)
+        pygame.sprite.Sprite.__init__(self, self.groups)  # THIS LINE IS IMPORTANT !!
+        self.image = image
+        self.rect = self.image.get_rect()
+        self.x, self.y = PygView.scrollx + start_x * 32, PygView.scrolly + start_y * 32 + 16
+        self.tx, self.ty = PygView.scrollx + target_x * 32, PygView.scrolly + target_y * 32 + 16
+        self.duration = duration  # duration of flight in seconds
+        self.acc = acceleration_factor  # if < 1, Text moves slower. if > 1, text moves faster. 
+        self.dx = (self.tx - self.x) / self.duration
+        self.dy = (self.ty - self.y) / self.duration
+        self.rect.center = (self.x, self.y)
+        #print("startx:{} starty{} x:{} y:{} targetx:{} targety:{} tx:{} ty:{} dx:{} dy:{}".format(start_x, start_y, 
+        #                   self.x, self.y, target_x, target_y, self.tx, self.ty, self.dx, self.dy))
         self.time = 0
 
     def update(self, seconds):
@@ -861,6 +910,7 @@ class Flytext(pygame.sprite.Sprite):
         self.time += seconds
         if self.time > self.duration:
             self.kill()      # remove Sprite from screen and from groups
+
 
 
 class PygView(object):
@@ -939,10 +989,12 @@ class PygView(object):
         self.background = pygame.Surface((self.level.width*32, self.level.depth*32))
         # ------------ Sprite Groups -----------
         self.flytextgroup = pygame.sprite.Group()
+        self.flyimagegroup = pygame.sprite.Group()
         # self.bargroup = pygame.sprite.Group()
         self.allgroup = pygame.sprite.LayeredUpdates()  # sprite group with layers
         # --------- attach Sprites to Sprite groups ---
         Flytext.groups = self.flytextgroup, self.allgroup
+        FlyImage.groups = self.flytextgroup, self.flyimagegroup, self.allgroup
         # Healthbar.groups = self.bargroup, self.allgroup
         # ---------- sound and music ----------
         # sounds are in folder "sounds", music is in folder "music"
@@ -1025,17 +1077,19 @@ class PygView(object):
 
         # ---- paint monsters ---
         for monster in self.level.monsters:
+            monster.update_health()
             self.screen.blit(monster.picture, (PygView.scrollx + monster.x * 32, PygView.scrolly + monster.y * 32))
             # ------- draw healthbar  ----------
             # first, calculate if the monster has full hitpoints
-            if not monster.damaged:
-                monster.hpmax = monster.hitpoints
+            #if not monster.damaged:
+            #    monster.hpmax = monster.hitpoints
             # calculate health percentage, 100% = 32 pixel
-            health = round(((monster.hitpoints / (monster.hpmax / 100)) / 100) * 32,0)
+            #health = round(((monster.hitpoints / (monster.hpmax / 100)) / 100) * 32,0)
             # shows a maximum of 31 hitpoints as full green health-bar, with red from the right if less healthy
             # pygame.draw.rect(self.screen, (255,255,255), (PygView.scrollx + monster.x * 32,
             #    PygView.scrolly + monster.y * 32 - 15,32,4))
             # red full bar
+            health = int(monster.health * 32)
             pygame.draw.rect(self.screen, (255, 0, 0), (PygView.scrollx + monster.x * 32,
                              PygView.scrolly + monster.y * 32 - 15, 32, 5))
             # overwrite with green health bar
@@ -1098,61 +1152,118 @@ class PygView(object):
     def run(self):
         """The mainloop---------------------------------------------------"""
         running = True
+        self.firemode = False
+        self.newturn = False
         self.count_monsters()
         self.status = ["The game begins!", "You enter the dungeon...", "Hint: goto x:5 y:5",
                        "Hint: avoid traps", "Hint: Plunder!", "press ? for help", "good luck!"]
         while running and self.player.hitpoints > 0:
             self.seconds = self.clock.tick(self.fps)/1000.0  # seconds since last frame
+            
+            
             for event in pygame.event.get():
+              
                 if event.type == pygame.QUIT:
                     running = False 
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    # ------------ fire spell -------------
+                    if self.firemode:
+                        self.newturn = True
+                        self.firemode = False
+                        txt = []
+                        target_x, target_y = get_mousetile()
+                        targetmonster = self.level.is_monster(get_mousetile()[0], get_mousetile()[1])
+                        FlyImage(self.player.x, self.player.y, get_mousetile()[0], get_mousetile()[1], image=PygView.APPLE)
+                        
+                        # ------------ magic distance combat -------------
+                        if not targetmonster:
+                            txt.append("magic spell wasted")
+                        else:
+                            damage = 5
+                            defendername = type(targetmonster).__name__
+                            targetmonster.hitpoints -= damage
+                            Flytext(targetmonster.x, targetmonster.y, text="magic damage: {}".format(damage), delay=1)
+                            txt.append("magic combat: {} looses {} hitpoints ({} hp left)".format(defendername, damage,
+                                                                            targetmonster.hitpoints))
+                            if targetmonster.hitpoints < 1:
+                                # ---------- defender is dead  ----------------
+                                exp = random.randint(7, 10)
+                                self.player.xp += exp
+                                self.player.kills += 1
+                                victim = defendername
+                                if victim in self.player.killdict:
+                                    self.player.killdict[victim] += 1
+                                else:
+                                    self.player.killdict[victim] = 1
+                                txt.append("Player gains {} Xp".format(exp))
+                                line = self.player.check_levelup()
+                                if line:
+                                    txt.append(line)
+                                if random.random() < 0.5:    # 50% Chance to drop edibles
+                                    self.level.loot.append(Loot(targetmonster.x, targetmonster.y, "meat"))
+                        self.status.extend(txt)    
+                                            
+                                            
+                            
+                    #break    
                 elif event.type == pygame.KEYDOWN:
                     # -------- a key was pressed and released ---------
                     where = self.level.layout[(self.player.x, self.player.y)]
                     self.status.append("Turn {}".format(self.turns))
                     # ---- handle keys that do not count as a game turn (user interface etc.)
                     if event.key == pygame.K_ESCAPE:
-                        running = False
-                        break
+                        if self.firemode:
+                            self.firemode = False
+                        else:
+                            running = False
+                            break
+                    elif event.key == pygame.K_f:
+                        # toggle fire mode
+                        self.firemode = not self.firemode 
+                        print(self.firemode)
+                        break 
                     elif event.key == pygame.K_i:
+                        self.firemode = False
                         # ----------- show inventory (inventory) -----------------
                         display_textlines(self.player.show_inventory(), self.screen, image=PygView.TRADER)
                         continue  # do not move monsters etc., wait for next keyboard command
                     elif event.key == pygame.K_PLUS:
+                        #self.firemode = False
                         # ----- zoom in minimap
                         self.mapzoom += 1
                         continue  # do not move monsters etc., wait for next keyboard command
                     elif event.key == pygame.K_MINUS:
+                        #self.firemode = False
                         # ----- zoom out minimap
                         self.mapzoom -= 1
                         self.mapzoom = max(2, self.mapzoom)  # can not be less than 2
                         continue  # do not move monsters etc., wait for next keyboard command
                     # ---- handle keys that do count as a game turn (player action, movement etc.)
-                    self.turns += 1
-                    if self.player.mana < 32:
-                        self.player.mana += 0.1
-                    self.player.hunger += 0.25
-                    if self.player.hunger > 100:
-                        self.player.hitpoints -= 1
-                        self.player.damaged = True
-                        Flytext(self.player.x, self.player.y, "Hunger: dmg 1")
+                    self.newturn = True
+ 
                     self.player.dx = 0
                     self.player.dy = 0
                     if event.key == pygame.K_UP or event.key == pygame.K_w:
                         self.player.dy -= 1
+                        self.firemode = False
                     elif event.key == pygame.K_DOWN or event.key == pygame.K_s:
                         self.player.dy += 1
+                        self.firemode = False
                     elif event.key == pygame.K_LEFT or event.key == pygame.K_a:
                         self.player.dx -= 1
+                        self.firemode = False
                     elif event.key == pygame.K_RIGHT or event.key == pygame.K_d:
                         self.player.dx += 1
+                        self.firemode = False
                     elif event.key == pygame.K_QUESTION or event.key == pygame.K_h:
                         display_textlines(self.hilftextlines, self.screen)
+                        self.firemode = False
                         continue
                     elif event.key == pygame.K_PERIOD or event.key == pygame.K_RETURN:
-                        pass      # player is idle for one turn
-
+                        self.firemode = False
+                      
                     elif event.key == pygame.K_LESS or event.key == pygame.K_GREATER:     # < or > 
+                        self.firemode = False
                         if type(where).__name__ == "Stair":
                             if not where.down and self.player.z == 0:
                                 lines = ["Game OVer",
@@ -1339,28 +1450,42 @@ class PygView(object):
                                 self.player.inventory[i.text] = 1
                             self.status.append("{} Loot found! ({})".format(self.turns, i.text))
                             Flytext(self.player.x, self.player.y, i.text + " found!", (0, 200, 0))
-                    # ------------------- level update (remove old traps, doors etc.) ------
-                    self.level.update()                                             # tote monster löschen
-                    # -------------- move monsters ------------------
-                    for monster in self.level.monsters:
-                        x, y = monster.x, monster.y
-                        dx, dy = monster.ai(self.player)
-                        if self.level.is_monster(x + dx, y + dy):
-                            continue  # monster should not run into another monster
-                        if x+dx == self.player.x and y+dy == self.player.y:
-                            self.status.extend(combat_round(monster, self.player, self.level))
-                            self.status.extend(combat_round(self.player, monster, self.level))
-                            self.count_monsters()
-                            continue     # monster should not run into player, it should fight him
-                        whereto = self.level.layout[(x+dx, y+dy)]
-                        if type(whereto).__name__ == "Wall":
-                            continue     # monster should not run into wall. waiting instead
-                        if len([t for t in self.level.traps if t.x == x + dx and t.y == y + dy]) > 0:
-                            continue     # monster should not run into trap. waiting instead
-                        if len([d for d in self.level.doors if d.x == x + dx and d.y == y + dy]) > 0:
-                            continue  # monster should not run into door. waiting instead
-                        monster.x += dx
-                        monster.y += dy
+            # -------------new turn, level update (remove old traps, doors etc.) ------ ---------
+            #print(len(self.flyimagegroup))
+            if len(self.flyimagegroup) > 0:
+                pass # no new turn processing as long as fireballs are flying around
+            elif self.newturn:
+                self.newturn = False
+                self.turns += 1
+                if self.player.mana < 32:
+                    self.player.mana += 0.1
+                self.player.hunger += 0.25
+                if self.player.hunger > 100:
+                    self.player.hitpoints -= 1
+                    self.player.damaged = True
+                    Flytext(self.player.x, self.player.y, "Hunger: dmg 1")
+                self.level.update()                                             # tote monster löschen
+                # -------------- move monsters ------------------
+                for monster in self.level.monsters:
+                    #monster.update_health()
+                    x, y = monster.x, monster.y
+                    dx, dy = monster.ai(self.player)
+                    if self.level.is_monster(x + dx, y + dy):
+                        continue  # monster should not run into another monster
+                    if x+dx == self.player.x and y+dy == self.player.y:
+                        self.status.extend(combat_round(monster, self.player, self.level))
+                        self.status.extend(combat_round(self.player, monster, self.level))
+                        self.count_monsters()
+                        continue     # monster should not run into player, it should fight him
+                    whereto = self.level.layout[(x+dx, y+dy)]
+                    if type(whereto).__name__ == "Wall":
+                        continue     # monster should not run into wall. waiting instead
+                    if len([t for t in self.level.traps if t.x == x + dx and t.y == y + dy]) > 0:
+                        continue     # monster should not run into trap. waiting instead
+                    if len([d for d in self.level.doors if d.x == x + dx and d.y == y + dy]) > 0:
+                        continue  # monster should not run into door. waiting instead
+                    monster.x += dx
+                    monster.y += dy
             # pressedkeys = pygame.key.get_pressed()
             # if pygame.K_x in pressedkeys:
             #      print("x key is pressed")
@@ -1368,6 +1493,12 @@ class PygView(object):
             pygame.display.set_caption("  press Esc to quit. Fps: %.2f (%i x %i)" % (
                                        self.clock.get_fps(), self.width, self.height))
             self.paint() # paint this level
+            # -------- firemode -----
+            if self.firemode:
+                 pygame.draw.line(self.screen, (200,0,0), (PygView.scrollx + self.player.x * 32 +16, PygView.scrolly + self.player.y * 32 +16), (pygame.mouse.get_pos()[0], pygame.mouse.get_pos()[1]))
+                 x = pygame.mouse.get_pos()[0] // 32
+                 y = pygame.mouse.get_pos()[1] // 32
+                 pygame.draw.rect(self.screen, (200, random.randint(10,100), random.randint(10,100)), (x*32, y*32, 32, 23), 2)
             #  ------- draw the sprites ------
             # self.allgroup.clear(self.screen, self.background)
             self.allgroup.update(self.seconds)
