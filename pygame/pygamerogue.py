@@ -1182,6 +1182,7 @@ class PygView(object):
                             damage = 5
                             defendername = type(targetmonster).__name__
                             targetmonster.hitpoints -= damage
+                            # flying spell as duration 2 seconds, damage text should appear after delay of 1 second
                             Flytext(targetmonster.x, targetmonster.y, text="magic damage: {}".format(damage), delay=1)
                             txt.append("magic combat: {} looses {} hitpoints ({} hp left)".format(defendername, damage,
                                                                             targetmonster.hitpoints))
